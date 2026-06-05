@@ -3,7 +3,7 @@
  * Plugin Name: GF Views Analytics
  * Plugin URI:  https://simpliweb.com.au
  * Description: Analytics dashboard for Gravity Forms views and entries with charts, filtering, comparison, and PDF export.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      SimpliWeb
  * Author URI:  https://simpliweb.com.au
  * License:     GPL-2.0+
@@ -14,11 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GFVA_VERSION', '1.0.1' );
+define( 'GFVA_VERSION', '1.0.2' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
 
-// Include the updater class
 require_once GFVA_PATH . 'github-updater.php';
 
 if ( class_exists( 'SimpliWeb_GitHub_Updater' ) ) {
@@ -33,9 +32,6 @@ if ( class_exists( 'SimpliWeb_GitHub_Updater' ) ) {
 	$updater->initialize();
 }
 
-/**
- * Check Gravity Forms is active before doing anything.
- */
 add_action( 'admin_init', 'gfva_check_dependencies' );
 function gfva_check_dependencies() {
 	if ( ! class_exists( 'GFForms' ) ) {
@@ -45,9 +41,6 @@ function gfva_check_dependencies() {
 	}
 }
 
-/**
- * Register the admin menu page.
- */
 add_action( 'admin_menu', 'gfva_register_menu' );
 function gfva_register_menu() {
 	if ( ! class_exists( 'GFForms' ) ) {
@@ -63,9 +56,6 @@ function gfva_register_menu() {
 	);
 }
 
-/**
- * Enqueue scripts and styles on our admin page only.
- */
 add_action( 'admin_enqueue_scripts', 'gfva_enqueue_assets' );
 function gfva_enqueue_assets( $hook ) {
 	if ( strpos( $hook, 'gf-views-analytics' ) === false ) {
@@ -104,9 +94,6 @@ function gfva_enqueue_assets( $hook ) {
 	] );
 }
 
-/**
- * Render the admin page HTML shell.
- */
 function gfva_render_page() {
 	if ( ! current_user_can( 'gform_full_access' ) && ! current_user_can( 'manage_options' ) ) {
 		wp_die( 'You do not have permission to view this page.' );
@@ -114,9 +101,6 @@ function gfva_render_page() {
 	include GFVA_PATH . 'templates/page.php';
 }
 
-/**
- * AJAX: get the list of all forms for the filter dropdowns.
- */
 add_action( 'wp_ajax_gfva_get_forms', 'gfva_ajax_get_forms' );
 function gfva_ajax_get_forms() {
 	check_ajax_referer( 'gfva_nonce', 'nonce' );
@@ -135,18 +119,6 @@ function gfva_ajax_get_forms() {
 	wp_send_json_success( $data );
 }
 
-/**
- * AJAX: fetch analytics data.
- *
- * Accepts:
- *   form_ids[]        array of form IDs (empty = all)
- *   date_from         Y-m-d
- *   date_to           Y-m-d
- *   compare_from      Y-m-d (optional)
- *   compare_to        Y-m-d (optional)
- *   granularity       day|week|month
- *   include_entries   1|0
- */
 add_action( 'wp_ajax_gfva_get_data', 'gfva_ajax_get_data' );
 function gfva_ajax_get_data() {
 	check_ajax_referer( 'gfva_nonce', 'nonce' );
@@ -161,7 +133,7 @@ function gfva_ajax_get_data() {
 	$date_to         = sanitize_text_field( $_POST['date_to'] ?? '' );
 	$compare_from    = sanitize_text_field( $_POST['compare_from'] ?? '' );
 	$compare_to      = sanitize_text_field( $_POST['compare_to'] ?? '' );
-	$granularity     = in_array( $_POST['granularity'] ?? 'day', [ 'day', 'week', 'month' ], true )
+	$granularity     = in_array( $_POST['granularity'] ?? 'day', [ 'hour', 'day', 'week', 'month' ], true )
 		? $_POST['granularity']
 		: 'day';
 	$include_entries = ! empty( $_POST['include_entries'] );
@@ -170,14 +142,21 @@ function gfva_ajax_get_data() {
 		wp_send_json_error( 'Date range is required.' );
 	}
 
+	// Auto hourly when a single day is selected
+	if ( $date_from === $date_to && $granularity === 'day' ) {
+		$granularity = 'hour';
+	}
+
 	$result = [
-		'primary' => gfva_fetch_period( $form_ids, $date_from, $date_to, $granularity, $include_entries ),
-		'compare' => null,
-		'summary' => gfva_fetch_summary( $form_ids, $date_from, $date_to, $include_entries ),
+		'primary'     => gfva_fetch_period( $form_ids, $date_from, $date_to, $granularity, $include_entries ),
+		'compare'     => null,
+		'summary'     => gfva_fetch_summary( $form_ids, $date_from, $date_to, $include_entries ),
+		'granularity' => $granularity,
 	];
 
 	if ( $compare_from && $compare_to ) {
-		$result['compare']         = gfva_fetch_period( $form_ids, $compare_from, $compare_to, $granularity, $include_entries );
+		$compare_granularity = ( $compare_from === $compare_to && $granularity === 'hour' ) ? 'hour' : $granularity;
+		$result['compare']         = gfva_fetch_period( $form_ids, $compare_from, $compare_to, $compare_granularity, $include_entries );
 		$result['compare_summary'] = gfva_fetch_summary( $form_ids, $compare_from, $compare_to, $include_entries );
 	}
 
@@ -187,14 +166,10 @@ function gfva_ajax_get_data() {
 /**
  * Convert a Y-m-d date string from site timezone to UTC datetime strings
  * suitable for use in database queries.
- *
- * @param string $date       Y-m-d in site local time
- * @param bool   $end_of_day Whether to return end-of-day (23:59:59) rather than start
- * @return string            Y-m-d H:i:s in UTC
  */
 function gfva_local_to_utc( string $date, bool $end_of_day = false ): string {
-	$time     = $end_of_day ? ' 23:59:59' : ' 00:00:00';
-	$local    = new DateTime( $date . $time, wp_timezone() );
+	$time  = $end_of_day ? ' 23:59:59' : ' 00:00:00';
+	$local = new DateTime( $date . $time, wp_timezone() );
 	$local->setTimezone( new DateTimeZone( 'UTC' ) );
 	return $local->format( 'Y-m-d H:i:s' );
 }
@@ -206,6 +181,7 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 	global $wpdb;
 
 	$date_format = match ( $granularity ) {
+		'hour'  => '%Y-%m-%d %H:00',
 		'week'  => '%Y-%u',
 		'month' => '%Y-%m',
 		default => '%Y-%m-%d',
@@ -213,11 +189,12 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 
 	// ---- Views ----
 	$views_sql = "
-		SELECT DATE_FORMAT(date_created, %s) AS period, SUM(count) AS total
+		SELECT DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, SUM(count) AS total
 		FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$params = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
+	$tz_offset = gfva_get_tz_offset();
+	$params    = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 	if ( ! empty( $form_ids ) ) {
 		$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -237,11 +214,11 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 
 	// ---- Per-form breakdown ----
 	$breakdown_sql = "
-		SELECT form_id, DATE_FORMAT(date_created, %s) AS period, SUM(count) AS total
+		SELECT form_id, DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, SUM(count) AS total
 		FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$bp = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
+	$bp = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 	if ( ! empty( $form_ids ) ) {
 		$placeholders   = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -265,12 +242,12 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 	// ---- Entries ----
 	if ( $include_entries ) {
 		$entries_sql = "
-			SELECT DATE_FORMAT(date_created, %s) AS period, COUNT(*) AS total
+			SELECT DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, COUNT(*) AS total
 			FROM {$wpdb->prefix}gf_entry
 			WHERE status = 'active'
 			  AND date_created BETWEEN %s AND %s
 		";
-		$ep = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
+		$ep = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 		if ( ! empty( $form_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -297,12 +274,11 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $include_entries ): array {
 	global $wpdb;
 
-	// Total views — sum the count column
 	$views_sql = "
 		SELECT SUM(count) FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$vp = [ $from . ' 00:00:00', $to . ' 23:59:59' ];
+	$vp = [ gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 	if ( ! empty( $form_ids ) ) {
 		$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
 		$views_sql   .= " AND form_id IN ($placeholders)";
@@ -310,22 +286,8 @@ function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $in
 	}
 	$total_views = (int) $wpdb->get_var( $wpdb->prepare( $views_sql, ...$vp ) );
 
-	// Unique visitors — distinct IP is still a row-level concept, COUNT(*) is correct here
-	$unique_sql = "
-		SELECT COUNT(DISTINCT ip) FROM {$wpdb->prefix}gf_form_view
-		WHERE date_created BETWEEN %s AND %s
-	";
-	$up = [ $from . ' 00:00:00', $to . ' 23:59:59' ];
-	if ( ! empty( $form_ids ) ) {
-		$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
-		$unique_sql  .= " AND form_id IN ($placeholders)";
-		$up           = array_merge( $up, $form_ids );
-	}
-	$unique_views = (int) $wpdb->get_var( $wpdb->prepare( $unique_sql, ...$up ) );
-
 	$summary = [
 		'total_views'   => $total_views,
-		'unique_views'  => $unique_views,
 		'total_entries' => 0,
 		'conversion'    => 0,
 	];
@@ -335,7 +297,7 @@ function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $in
 			SELECT COUNT(*) FROM {$wpdb->prefix}gf_entry
 			WHERE status = 'active' AND date_created BETWEEN %s AND %s
 		";
-		$enp = [ $from . ' 00:00:00', $to . ' 23:59:59' ];
+		$enp = [ gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 		if ( ! empty( $form_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
 			$entries_sql .= " AND form_id IN ($placeholders)";
@@ -347,4 +309,15 @@ function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $in
 	}
 
 	return $summary;
+}
+
+/**
+ * Get the site timezone offset string for CONVERT_TZ e.g. +08:00
+ */
+function gfva_get_tz_offset(): string {
+	$offset  = wp_timezone()->getOffset( new DateTime( 'now', new DateTimeZone( 'UTC' ) ) );
+	$hours   = intdiv( abs( $offset ), 3600 );
+	$minutes = ( abs( $offset ) % 3600 ) / 60;
+	$sign    = $offset >= 0 ? '+' : '-';
+	return sprintf( '%s%02d:%02d', $sign, $hours, $minutes );
 }
