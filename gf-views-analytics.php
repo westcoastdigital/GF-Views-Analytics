@@ -3,7 +3,7 @@
  * Plugin Name: GF Views Analytics
  * Plugin URI:  https://simpliweb.com.au
  * Description: Analytics dashboard for Gravity Forms views and entries with charts, filtering, comparison, and PDF export.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      SimpliWeb
  * Author URI:  https://simpliweb.com.au
  * License:     GPL-2.0+
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GFVA_VERSION', '1.0.2' );
+define( 'GFVA_VERSION', '1.0.3' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
 
@@ -89,8 +89,10 @@ function gfva_enqueue_assets( $hook ) {
 	);
 
 	wp_localize_script( 'gfva-admin', 'GFVA', [
-		'ajax_url' => admin_url( 'admin-ajax.php' ),
-		'nonce'    => wp_create_nonce( 'gfva_nonce' ),
+		'ajax_url'              => admin_url( 'admin-ajax.php' ),
+		'nonce'                 => wp_create_nonce( 'gfva_nonce' ),
+		'date_format'           => gfva_get_date_format(),
+		'date_format_nonce'     => wp_create_nonce( 'gfva_date_format_nonce' ),
 	] );
 }
 
@@ -99,6 +101,76 @@ function gfva_render_page() {
 		wp_die( 'You do not have permission to view this page.' );
 	}
 	include GFVA_PATH . 'templates/page.php';
+}
+
+/**
+ * Add date format option to Screen Options panel.
+ */
+add_filter( 'screen_settings', 'gfva_screen_options', 10, 2 );
+function gfva_screen_options( string $settings, WP_Screen $screen ): string {
+	if ( $screen->id !== 'tools_page_gf-views-analytics' ) {
+		return $settings;
+	}
+
+	$current   = gfva_get_date_format();
+	$wp_format = get_option( 'date_format' );
+
+	$options = [
+		'd/m/Y' => 'DD/MM/YYYY (' . date( 'd/m/Y' ) . ')',
+		'm/d/Y' => 'MM/DD/YYYY (' . date( 'm/d/Y' ) . ')',
+		'Y-m-d' => 'YYYY-MM-DD (' . date( 'Y-m-d' ) . ')',
+		'd M Y' => 'DD Mon YYYY (' . date( 'd M Y' ) . ')',
+		'd F Y' => 'DD Month YYYY (' . date( 'd F Y' ) . ')',
+	];
+
+	// Prepend WordPress default if it isn't already in the list
+	if ( ! isset( $options[ $wp_format ] ) ) {
+		$options = [ $wp_format => 'WordPress default (' . date( $wp_format ) . ')' ] + $options;
+	}
+
+	$settings .= '<fieldset id="gfva-screen-options"><legend><strong>' . __( 'Views Analytics: Date Format', 'gf-views-analytics' ) . '</strong></legend>';
+	$settings .= '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">';
+	foreach ( $options as $value => $label ) {
+		$checked   = checked( $current, $value, false );
+		$settings .= sprintf(
+			'<label style="font-weight:normal;"><input type="radio" name="gfva_date_format" class="gfva-date-format-radio" value="%s" %s> %s</label>',
+			esc_attr( $value ),
+			$checked,
+			esc_html( $label )
+		);
+	}
+	$settings .= '</div></fieldset>';
+
+	return $settings;
+}
+
+/**
+ * AJAX: save date format preference.
+ */
+add_action( 'wp_ajax_gfva_save_date_format', 'gfva_ajax_save_date_format' );
+function gfva_ajax_save_date_format() {
+	check_ajax_referer( 'gfva_date_format_nonce', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( 'Insufficient permissions.' );
+	}
+
+	$allowed = [ get_option( 'date_format' ), 'd/m/Y', 'm/d/Y', 'Y-m-d', 'd M Y', 'd F Y' ];
+	$format  = sanitize_text_field( $_POST['format'] ?? '' );
+
+	if ( ! in_array( $format, $allowed, true ) ) {
+		wp_send_json_error( 'Invalid format.' );
+	}
+
+	update_user_meta( get_current_user_id(), 'gfva_date_format', $format );
+	wp_send_json_success( [ 'format' => $format ] );
+}
+
+/**
+ * Get the current user's preferred date format, defaulting to WordPress setting.
+ */
+function gfva_get_date_format(): string {
+	$saved = get_user_meta( get_current_user_id(), 'gfva_date_format', true );
+	return $saved ?: get_option( 'date_format' );
 }
 
 add_action( 'wp_ajax_gfva_get_forms', 'gfva_ajax_get_forms' );
@@ -155,7 +227,7 @@ function gfva_ajax_get_data() {
 	];
 
 	if ( $compare_from && $compare_to ) {
-		$compare_granularity = ( $compare_from === $compare_to && $granularity === 'hour' ) ? 'hour' : $granularity;
+		$compare_granularity       = ( $compare_from === $compare_to ) ? 'hour' : $granularity;
 		$result['compare']         = gfva_fetch_period( $form_ids, $compare_from, $compare_to, $compare_granularity, $include_entries );
 		$result['compare_summary'] = gfva_fetch_summary( $form_ids, $compare_from, $compare_to, $include_entries );
 	}
@@ -164,14 +236,24 @@ function gfva_ajax_get_data() {
 }
 
 /**
- * Convert a Y-m-d date string from site timezone to UTC datetime strings
- * suitable for use in database queries.
+ * Convert a Y-m-d date string from site timezone to UTC datetime strings.
  */
 function gfva_local_to_utc( string $date, bool $end_of_day = false ): string {
 	$time  = $end_of_day ? ' 23:59:59' : ' 00:00:00';
 	$local = new DateTime( $date . $time, wp_timezone() );
 	$local->setTimezone( new DateTimeZone( 'UTC' ) );
 	return $local->format( 'Y-m-d H:i:s' );
+}
+
+/**
+ * Get the site timezone offset string for CONVERT_TZ e.g. +08:00
+ */
+function gfva_get_tz_offset(): string {
+	$offset  = wp_timezone()->getOffset( new DateTime( 'now', new DateTimeZone( 'UTC' ) ) );
+	$hours   = intdiv( abs( $offset ), 3600 );
+	$minutes = ( abs( $offset ) % 3600 ) / 60;
+	$sign    = $offset >= 0 ? '+' : '-';
+	return sprintf( '%s%02d:%02d', $sign, $hours, $minutes );
 }
 
 /**
@@ -187,14 +269,15 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 		default => '%Y-%m-%d',
 	};
 
+	$tz_offset = gfva_get_tz_offset();
+
 	// ---- Views ----
 	$views_sql = "
 		SELECT DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, SUM(count) AS total
 		FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$tz_offset = gfva_get_tz_offset();
-	$params    = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
+	$params = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 	if ( ! empty( $form_ids ) ) {
 		$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -309,15 +392,4 @@ function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $in
 	}
 
 	return $summary;
-}
-
-/**
- * Get the site timezone offset string for CONVERT_TZ e.g. +08:00
- */
-function gfva_get_tz_offset(): string {
-	$offset  = wp_timezone()->getOffset( new DateTime( 'now', new DateTimeZone( 'UTC' ) ) );
-	$hours   = intdiv( abs( $offset ), 3600 );
-	$minutes = ( abs( $offset ) % 3600 ) / 60;
-	$sign    = $offset >= 0 ? '+' : '-';
-	return sprintf( '%s%02d:%02d', $sign, $hours, $minutes );
 }

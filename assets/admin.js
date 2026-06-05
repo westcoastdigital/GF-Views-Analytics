@@ -3,17 +3,17 @@
 	'use strict';
 
 	const state = {
-		forms:         [],
-		selectedForms: [],
-		dateFrom:      '',
-		dateTo:        '',
-		compareFrom:   '',
-		compareTo:     '',
-		granularity:   'day',
+		forms:          [],
+		selectedForms:  [],
+		dateFrom:       '',
+		dateTo:         '',
+		compareFrom:    '',
+		compareTo:      '',
+		granularity:    'day',
 		includeEntries: true,
 		compareEnabled: false,
-		lastData:      null,
-		activePreset:  null,
+		lastData:       null,
+		activePreset:   null,
 	};
 
 	let mainChart      = null;
@@ -25,6 +25,7 @@
 		initToggles();
 		initPresets();
 		initFormSelect();
+		initScreenOptions();
 		readUrlParams();
 		loadForms();
 
@@ -37,13 +38,66 @@
 		}
 	});
 
+	/* ── Screen Options ─────────────────────────────── */
+	function initScreenOptions() {
+		$(document).on('change', '.gfva-date-format-radio', function () {
+			const format = $(this).val();
+			$.post(GFVA.ajax_url, {
+				action: 'gfva_save_date_format',
+				nonce:  GFVA.date_format_nonce,
+				format: format,
+			}, function (res) {
+				if (res.success) {
+					GFVA.date_format = format;
+					// Re-init date pickers with new format
+					['#gfva-date-from','#gfva-date-to','#gfva-compare-from','#gfva-compare-to'].forEach(function (sel) {
+						const el = document.querySelector(sel);
+						if (el && el._flatpickr) {
+							el._flatpickr.destroy();
+						}
+					});
+					initDatePickers();
+					// Re-run report if results are showing so dates re-render
+					if ($('#gfva-results').is(':visible')) {
+						renderResults(state.lastData);
+					}
+				}
+			});
+		});
+	}
+
 	/* ── Date pickers ───────────────────────────────── */
 	function initDatePickers() {
-		const opts = { dateFormat: 'Y-m-d', allowInput: true };
-		flatpickr('#gfva-date-from',    { ...opts, onChange: (d, s) => { state.dateFrom = s; } });
-		flatpickr('#gfva-date-to',      { ...opts, onChange: (d, s) => { state.dateTo   = s; } });
-		flatpickr('#gfva-compare-from', { ...opts, onChange: (d, s) => { state.compareFrom = s; } });
-		flatpickr('#gfva-compare-to',   { ...opts, onChange: (d, s) => { state.compareTo   = s; } });
+		const fpFormat = phpFormatToFlatpickr( GFVA.date_format || 'Y-m-d' );
+		const opts = {
+			dateFormat: 'Y-m-d',
+			altInput:   true,
+			altFormat:  fpFormat,
+			allowInput: true,
+		};
+		flatpickr('#gfva-date-from',    { ...opts, onChange: (d) => { state.dateFrom    = toYmd(d[0]); } });
+		flatpickr('#gfva-date-to',      { ...opts, onChange: (d) => { state.dateTo      = toYmd(d[0]); } });
+		flatpickr('#gfva-compare-from', { ...opts, onChange: (d) => { state.compareFrom = toYmd(d[0]); } });
+		flatpickr('#gfva-compare-to',   { ...opts, onChange: (d) => { state.compareTo   = toYmd(d[0]); } });
+	}
+
+	// Always store internally as Y-m-d for AJAX
+	function toYmd(dateObj) {
+		if (!dateObj) return '';
+		const y = dateObj.getFullYear();
+		const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+		const d = String(dateObj.getDate()).padStart(2, '0');
+		return `${y}-${m}-${d}`;
+	}
+
+	// Convert PHP date format tokens to Flatpickr tokens
+	function phpFormatToFlatpickr(phpFmt) {
+		const map = {
+			'd': 'd', 'j': 'j', 'm': 'm', 'n': 'n',
+			'Y': 'Y', 'y': 'y', 'M': 'M', 'F': 'F',
+			'D': 'D', 'l': 'l',
+		};
+		return phpFmt.split('').map(c => map[c] !== undefined ? map[c] : c).join('');
 	}
 
 	/* ── Granularity ────────────────────────────────── */
@@ -60,7 +114,7 @@
 		$('#gfva-compare-toggle').on('change', function () {
 			state.compareEnabled = this.checked;
 			$('#gfva-compare-dates').css({
-				opacity:        this.checked ? 1 : 0.4,
+				opacity:          this.checked ? 1 : 0.4,
 				'pointer-events': this.checked ? 'auto' : 'none',
 			});
 		});
@@ -88,8 +142,8 @@
 		else if (preset === 'mtd') { from = new Date(today.getFullYear(), today.getMonth(), 1); }
 		else if (preset === 'ytd') { from = new Date(today.getFullYear(), 0, 1); }
 
-		const fromStr = formatDate(from);
-		const toStr   = formatDate(today);
+		const fromStr = toYmd(from);
+		const toStr   = toYmd(today);
 
 		setFlatpickr('#gfva-date-from', fromStr);
 		setFlatpickr('#gfva-date-to',   toStr);
@@ -107,14 +161,10 @@
 		return d;
 	}
 
-	function formatDate(d) {
-		return d.toISOString().split('T')[0];
-	}
-
 	function setFlatpickr(selector, dateStr) {
 		const el = document.querySelector(selector);
 		if (el && el._flatpickr) {
-			el._flatpickr.setDate(dateStr, true);
+			el._flatpickr.setDate(dateStr, true, 'Y-m-d');
 		} else {
 			$(selector).val(dateStr);
 		}
@@ -279,13 +329,13 @@
 		$('#gfva-run').prop('disabled', true);
 
 		const payload = {
-			action:         'gfva_get_data',
-			nonce:           GFVA.nonce,
-			form_ids:        state.selectedForms,
-			date_from:       state.dateFrom,
-			date_to:         state.dateTo,
-			granularity:     state.granularity,
-			include_entries: state.includeEntries ? 1 : 0,
+			action:          'gfva_get_data',
+			nonce:            GFVA.nonce,
+			form_ids:         state.selectedForms,
+			date_from:        state.dateFrom,
+			date_to:          state.dateTo,
+			granularity:      state.granularity,
+			include_entries:  state.includeEntries ? 1 : 0,
 		};
 
 		if (state.compareEnabled && state.compareFrom && state.compareTo) {
@@ -430,10 +480,7 @@
 			}
 		}
 
-		// For hourly view, strip the date prefix from labels so they read as "09:00" etc
-		const labels = isHourly
-			? allPeriods.map(p => p.split(' ')[1] || p)
-			: allPeriods;
+		const labels = allPeriods.map(p => formatPeriod(p, isHourly));
 
 		mainChart = new Chart(canvas, {
 			type: 'line',
@@ -586,8 +633,7 @@
 			const vDelta   = cViews !== null ? views - cViews : null;
 			const eDelta   = cEntries !== null && entries !== null ? entries - cEntries : null;
 
-			// For hourly, show just the time portion
-			const periodLabel = isHourly ? (period.split(' ')[1] || period) : period;
+			const periodLabel = formatPeriod(period, isHourly);
 
 			const $tr = $('<tr>');
 			$tr.append(`<td class="col-left">${escHtml(periodLabel)}</td>`);
@@ -622,7 +668,7 @@
 			: 'All forms';
 		const header = $('<div class="gfva-print-header">').html(`
 			<h2 style="margin:0 0 6px;font-size:16px;">GF Views Analytics Report</h2>
-			<p>Period: ${escHtml(state.dateFrom)} – ${escHtml(state.dateTo)}</p>
+			<p>Period: ${escHtml(formatPeriod(state.dateFrom, false))} – ${escHtml(formatPeriod(state.dateTo, false))}</p>
 			<p>Forms: ${escHtml(forms)}</p>
 			<p>Generated: ${new Date().toLocaleString()}</p>
 		`);
@@ -662,8 +708,8 @@
 			const entries  = primary.entries ? (primary.entries[period] || 0) : null;
 			const cEntries = compare && compare.entries ? (compare.entries[period] || 0) : null;
 			const conv     = views > 0 && entries !== null ? ((entries / views) * 100).toFixed(1) : '';
-			const periodLabel = isHourly ? (period.split(' ')[1] || period) : period;
 
+			const periodLabel = formatPeriod(period, isHourly);
 			const row = [periodLabel, views];
 			if (cViews !== null)  { row.push(cViews, views - cViews); }
 			if (entries !== null) {
@@ -693,6 +739,48 @@
 	function formatNumber(n) {
 		if (n === null || n === undefined) return '—';
 		return Number(n).toLocaleString();
+	}
+
+	// Convert a Y-m-d database period to the user's preferred display format.
+	// Week (2026-21) and month (2026-05) periods are left as-is.
+	function formatPeriod(period, isHourly) {
+		if (isHourly) {
+			return period.split(' ')[1] || period;
+		}
+
+		const parts = period.split('-');
+		if (parts.length !== 3) return period;
+
+		const fmt  = GFVA.date_format || 'Y-m-d';
+		const year = parts[0];
+		const mon  = parts[1];
+		const day  = parts[2];
+		const mIdx = parseInt(mon, 10) - 1;
+		const dayInt = parseInt(day, 10);
+
+		const monthsFull  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+		const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+		// Replace tokens longest-first to avoid partial replacements
+		return fmt
+			.replace('F', monthsFull[mIdx]  || mon)
+			.replace('M', monthsShort[mIdx] || mon)
+			.replace('d', day)
+			.replace('j', String(dayInt))
+			.replace('m', mon)
+			.replace('n', String(mIdx + 1))
+			.replace('Y', year)
+			.replace('y', year.slice(2));
+	}
+
+	// Convert PHP date format tokens to Flatpickr tokens
+	function phpFormatToFlatpickr(phpFmt) {
+		const map = {
+			'd': 'd', 'j': 'j', 'm': 'm', 'n': 'n',
+			'Y': 'Y', 'y': 'y', 'M': 'M', 'F': 'F',
+			'D': 'D', 'l': 'l',
+		};
+		return phpFmt.split('').map(c => map[c] !== undefined ? map[c] : c).join('');
 	}
 
 	function escHtml(str) {

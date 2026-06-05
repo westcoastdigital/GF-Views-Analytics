@@ -22,12 +22,6 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 
 This plugin supports automatic updates via GitHub. Updates will appear in the standard WordPress **Plugins > Installed Plugins** update flow whenever a new release is published to the repository.
 
-If your repository is private, define your GitHub access token in `wp-config.php`:
-
-```php
-define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
-```
-
 ## Features
 
 ### Filters
@@ -60,6 +54,15 @@ Filters are written to the URL when you run a report, so you can bookmark, share
 Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively. Unique visitors are counted as distinct IP addresses within the selected period. Entries are read from `wp_gf_entry` where `status = 'active'`.
 
 ## Changelog
+
+### 1.0.3
+- Update the date format so uses default setting or allows to be set in Screen Options
+
+### 1.0.2
+- Remove the unique visitors as will always be one, and fix the table alignments
+
+### 1.0.1
+- Fix the views as was counting rows instead of getting total from database
 
 ### 1.0.0
 - Initial release
