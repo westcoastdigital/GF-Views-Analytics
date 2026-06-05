@@ -18,7 +18,7 @@ define( 'GFVA_VERSION', '1.0.4' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
 
-define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
+define( 'GITHUB_ACCESS_TOKEN', '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' );
 
 require_once GFVA_PATH . 'github-updater.php';
 
