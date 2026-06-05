@@ -63,6 +63,61 @@
 				}
 			});
 		});
+
+		$(document).on('click', '#gfva-wl-save', function () {
+			const title = $('#gfva_report_title').val().trim();
+			const logo  = $('#gfva_report_logo').val().trim();
+			$.post(GFVA.ajax_url, {
+				action:       'gfva_save_white_label',
+				nonce:         GFVA.date_format_nonce,
+				report_title:  title,
+				report_logo:   logo,
+			}, function (res) {
+				if (res.success) {
+					GFVA.report_title = title;
+					GFVA.report_logo  = logo;
+					$('#gfva-wl-saved').fadeIn().delay(2000).fadeOut();
+					if ($('#gfva-results').is(':visible')) {
+						renderPrintHeader();
+					}
+				}
+			});
+		});
+
+		$(document).on('click', '#gfva-logo-pick', function (e) {
+			e.preventDefault();
+
+			if (window._gfvaMediaFrame) {
+				window._gfvaMediaFrame.open();
+				return;
+			}
+
+			window._gfvaMediaFrame = wp.media({
+				title:    'Select Logo',
+				button:   { text: 'Use this image' },
+				multiple: false,
+				library:  { type: 'image' },
+			});
+
+			window._gfvaMediaFrame.on('select', function () {
+				const attachment = window._gfvaMediaFrame.state().get('selection').first().toJSON();
+				const url        = attachment.url;
+				$('#gfva_report_logo').val(url);
+				$('#gfva-logo-preview').attr('src', url).show();
+			});
+
+			window._gfvaMediaFrame.open();
+		});
+
+		// Update preview when URL is typed manually
+		$(document).on('input', '#gfva_report_logo', function () {
+			const url = $(this).val().trim();
+			if (url) {
+				$('#gfva-logo-preview').attr('src', url).show();
+			} else {
+				$('#gfva-logo-preview').hide();
+			}
+		});
 	}
 
 	/* ── Date pickers ───────────────────────────────── */
@@ -703,16 +758,37 @@
 
 	function renderPrintHeader() {
 		$('.gfva-print-header').remove();
-		const forms  = state.selectedForms.length
+
+		const forms = state.selectedForms.length
 			? state.forms.filter(f => state.selectedForms.includes(f.id)).map(f => f.title).join(', ')
 			: 'All forms';
-		const header = $('<div class="gfva-print-header">').html(`
-			<h2 style="margin:0 0 6px;font-size:16px;">GF Views Analytics Report</h2>
-			<p>Period: ${escHtml(formatPeriod(state.dateFrom, false))} - ${escHtml(formatPeriod(state.dateTo, false))}</p>
-			<p>Forms: ${escHtml(forms)}</p>
-			<p>Generated: ${new Date().toLocaleString()}</p>
-		`);
-		$('#gfva-results').prepend(header);
+
+		const primaryPeriod = `${formatPeriod(state.dateFrom, false)} - ${formatPeriod(state.dateTo, false)}`;
+		let periodHtml = `<p>Period: ${escHtml(primaryPeriod)}</p>`;
+
+		if (state.compareEnabled && state.compareFrom && state.compareTo) {
+			const comparePeriod = `${formatPeriod(state.compareFrom, false)} - ${formatPeriod(state.compareTo, false)}`;
+			periodHtml += `<p>Compare: ${escHtml(comparePeriod)}</p>`;
+		}
+
+		const title   = GFVA.report_title || 'GF Views Analytics Report';
+		const logoUrl = GFVA.report_logo  || '';
+
+		let headerHtml = '';
+		if (logoUrl) {
+			headerHtml += `<img src="${escHtml(logoUrl)}" style="max-height:40px;max-width:200px;display:block;margin-bottom:10px;" alt="">`;
+		} else {
+			headerHtml += `<h2 style="margin:0 0 6px;font-size:16px;">Views Analytics</h2>`;
+		}
+
+		headerHtml += `<h3 style="margin:0 0 8px;font-size:14px;font-weight:600;">${escHtml(title)}</h3>`;
+		headerHtml += periodHtml;
+		headerHtml += `<p>Forms: ${escHtml(forms)}</p>`;
+		headerHtml += `<p>Generated: ${new Date().toLocaleString()}</p>`;
+
+		$('#gfva-results').prepend(
+			$('<div class="gfva-print-header">').html(headerHtml)
+		);
 	}
 
 	/* ── Exports ────────────────────────────────────── */

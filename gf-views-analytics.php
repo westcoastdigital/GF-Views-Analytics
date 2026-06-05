@@ -3,7 +3,7 @@
  * Plugin Name: GF Views Analytics
  * Plugin URI:  https://simpliweb.com.au
  * Description: Analytics dashboard for Gravity Forms views and entries with charts, filtering, comparison, and PDF export.
- * Version:     1.0.4
+ * Version:     1.0.5
  * Author:      SimpliWeb
  * Author URI:  https://simpliweb.com.au
  * License:     GPL-2.0+
@@ -14,11 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GFVA_VERSION', '1.0.4' );
+define( 'GFVA_VERSION', '1.0.5' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
-
-define( 'GITHUB_ACCESS_TOKEN', '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' );
 
 require_once GFVA_PATH . 'github-updater.php';
 
@@ -64,6 +62,8 @@ function gfva_enqueue_assets( $hook ) {
 		return;
 	}
 
+	wp_enqueue_media();
+
 	wp_enqueue_script(
 		'chartjs',
 		'https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js',
@@ -95,6 +95,8 @@ function gfva_enqueue_assets( $hook ) {
 		'nonce'             => wp_create_nonce( 'gfva_nonce' ),
 		'date_format'       => gfva_get_date_format(),
 		'date_format_nonce' => wp_create_nonce( 'gfva_date_format_nonce' ),
+		'report_title'      => get_user_meta( get_current_user_id(), 'gfva_report_title', true ) ?: '',
+		'report_logo'       => get_user_meta( get_current_user_id(), 'gfva_report_logo', true ) ?: '',
 	] );
 }
 
@@ -111,8 +113,10 @@ function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 		return $settings;
 	}
 
-	$current   = gfva_get_date_format();
-	$wp_format = get_option( 'date_format' );
+	$current      = gfva_get_date_format();
+	$wp_format    = get_option( 'date_format' );
+	$custom_title = get_user_meta( get_current_user_id(), 'gfva_report_title', true );
+	$custom_logo  = get_user_meta( get_current_user_id(), 'gfva_report_logo', true );
 
 	$options = [
 		'd/m/Y' => 'DD/MM/YYYY (' . date( 'd/m/Y' ) . ')',
@@ -126,6 +130,7 @@ function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 		$options = [ $wp_format => 'WordPress default (' . date( $wp_format ) . ')' ] + $options;
 	}
 
+	// Date format
 	$settings .= '<fieldset id="gfva-screen-options"><legend><strong>' . __( 'Views Analytics: Date Format', 'gf-views-analytics' ) . '</strong></legend>';
 	$settings .= '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">';
 	foreach ( $options as $value => $label ) {
@@ -137,6 +142,42 @@ function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 			esc_html( $label )
 		);
 	}
+	$settings .= '</div></fieldset>';
+
+	// White label
+	$settings .= '<fieldset id="gfva-screen-options-wl" style="margin-top:16px;"><legend><strong>' . __( 'Views Analytics: PDF White Label', 'gf-views-analytics' ) . '</strong></legend>';
+	$settings .= '<div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">';
+
+	$settings .= '<div>';
+	$settings .= '<label style="font-weight:normal;display:block;margin-bottom:4px;" for="gfva_report_title">Report title</label>';
+	$settings .= sprintf(
+		'<input type="text" id="gfva_report_title" class="gfva-wl-field" data-field="report_title" value="%s" placeholder="GF Views Analytics Report" style="width:100%%;max-width:280px;">',
+		esc_attr( $custom_title )
+	);
+	$settings .= '</div>';
+
+	$settings .= '<div>';
+	$settings .= '<label style="font-weight:normal;display:block;margin-bottom:4px;" for="gfva_report_logo">Logo</label>';
+	$settings .= '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">';
+	$settings .= sprintf(
+		'<input type="url" id="gfva_report_logo" class="gfva-wl-field" data-field="report_logo" value="%s" placeholder="https://example.com/logo.png" style="width:100%%;max-width:220px;">',
+		esc_attr( $custom_logo )
+	);
+	$settings .= '<button type="button" class="button" id="gfva-logo-pick">Choose image</button>';
+	$settings .= '</div>';
+	if ( $custom_logo ) {
+		$settings .= sprintf(
+			'<img id="gfva-logo-preview" src="%s" style="display:block;margin-top:8px;max-height:40px;max-width:200px;">',
+			esc_url( $custom_logo )
+		);
+	} else {
+		$settings .= '<img id="gfva-logo-preview" src="" style="display:none;margin-top:8px;max-height:40px;max-width:200px;">';
+	}
+	$settings .= '<p style="margin:4px 0 0;font-size:11px;color:#757575;">Replaces the plugin logo and Views Analytics heading. Recommended height: 40px.</p>';
+	$settings .= '</div>';
+
+	$settings .= '<button type="button" class="button" id="gfva-wl-save">Save</button>';
+	$settings .= '<span id="gfva-wl-saved" style="display:none;color:#46b450;font-size:12px;margin-left:8px;">Saved.</span>';
 	$settings .= '</div></fieldset>';
 
 	return $settings;
@@ -158,6 +199,22 @@ function gfva_ajax_save_date_format() {
 
 	update_user_meta( get_current_user_id(), 'gfva_date_format', $format );
 	wp_send_json_success( [ 'format' => $format ] );
+}
+
+add_action( 'wp_ajax_gfva_save_white_label', 'gfva_ajax_save_white_label' );
+function gfva_ajax_save_white_label() {
+	check_ajax_referer( 'gfva_date_format_nonce', 'nonce' );
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( 'Insufficient permissions.' );
+	}
+
+	$title = sanitize_text_field( $_POST['report_title'] ?? '' );
+	$logo  = esc_url_raw( $_POST['report_logo'] ?? '' );
+
+	update_user_meta( get_current_user_id(), 'gfva_report_title', $title );
+	update_user_meta( get_current_user_id(), 'gfva_report_logo', $logo );
+
+	wp_send_json_success( [ 'report_title' => $title, 'report_logo' => $logo ] );
 }
 
 function gfva_get_date_format(): string {

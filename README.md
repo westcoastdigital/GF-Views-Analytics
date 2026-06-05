@@ -18,8 +18,6 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 2. Activate the plugin through **Plugins > Installed Plugins**
 3. Navigate to **Tools > Views Analytics**
 
-## Features
-
 ### Filters
 
 - **Forms** — multi-select dropdown with search; choose one, many, or all forms
@@ -59,31 +57,15 @@ The date format used throughout the dashboard and exports can be set per user vi
 
 Each user's preference is saved independently so it does not affect other users.
 
+### PDF White Label
+
+The PDF report header can be customised per user via **Screen Options**. Options include:
+
+- **Report title** — replaces the default "GF Views Analytics Report" heading
+- **Logo** — replaces the plugin icon and page heading; accepts a URL or choose from the media library. Recommended height: 40px.
+
+White label settings are saved per user and take effect immediately when running a new report.
+
 ## Data Source
 
 Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively, summing the `count` column for accurate view totals. Entries are read from `wp_gf_entry` where `status = 'active'`. All database queries are timezone-aware and offset against the site timezone configured under Settings > General, so date boundaries reflect local time rather than UTC.
-
-## Changelog
-
-### 1.0.4
-- Added Entries by form bar chart alongside the existing Views by form chart
-- Fixed missing `by_form` data assignment that prevented both breakdown charts from rendering
-
-### 1.0.3
-- Fixed date format display in chart and table — tokens now replaced in a single pass to prevent partial replacements corrupting month names
-- Added date format preference via Screen Options, saved per user via AJAX
-- Date pickers now reflect the chosen display format via Flatpickr's alt input
-- Dates in print header now use the chosen display format
-
-### 1.0.2
-- Removed unique visitors stat (always returned 1 due to aggregated view rows)
-- Fixed table column alignment — period column left-aligned, all data columns right-aligned
-- Added hourly granularity, triggered automatically when a single day is selected
-- Added timezone offset via `CONVERT_TZ` so period grouping reflects site local time
-
-### 1.0.1
-- Fixed view counts — queries now use `SUM(count)` instead of `COUNT(*)` to read the actual view totals stored in `wp_gf_form_view`
-- Fixed timezone handling — date range boundaries now convert from site local time to UTC before querying
-
-### 1.0.0
-- Initial release
