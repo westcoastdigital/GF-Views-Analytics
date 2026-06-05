@@ -185,6 +185,21 @@ function gfva_ajax_get_data() {
 }
 
 /**
+ * Convert a Y-m-d date string from site timezone to UTC datetime strings
+ * suitable for use in database queries.
+ *
+ * @param string $date       Y-m-d in site local time
+ * @param bool   $end_of_day Whether to return end-of-day (23:59:59) rather than start
+ * @return string            Y-m-d H:i:s in UTC
+ */
+function gfva_local_to_utc( string $date, bool $end_of_day = false ): string {
+	$time     = $end_of_day ? ' 23:59:59' : ' 00:00:00';
+	$local    = new DateTime( $date . $time, wp_timezone() );
+	$local->setTimezone( new DateTimeZone( 'UTC' ) );
+	return $local->format( 'Y-m-d H:i:s' );
+}
+
+/**
  * Build time-series data for a date range.
  */
 function gfva_fetch_period( array $form_ids, string $from, string $to, string $granularity, bool $include_entries ): array {
@@ -202,7 +217,7 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 		FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$params = [ $date_format, $from . ' 00:00:00', $to . ' 23:59:59' ];
+	$params = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 	if ( ! empty( $form_ids ) ) {
 		$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -226,7 +241,7 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 		FROM {$wpdb->prefix}gf_form_view
 		WHERE date_created BETWEEN %s AND %s
 	";
-	$bp = [ $date_format, $from . ' 00:00:00', $to . ' 23:59:59' ];
+	$bp = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 	if ( ! empty( $form_ids ) ) {
 		$placeholders   = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
@@ -255,7 +270,7 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 			WHERE status = 'active'
 			  AND date_created BETWEEN %s AND %s
 		";
-		$ep = [ $date_format, $from . ' 00:00:00', $to . ' 23:59:59' ];
+		$ep = [ $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
 
 		if ( ! empty( $form_ids ) ) {
 			$placeholders = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
