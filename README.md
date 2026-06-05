@@ -22,6 +22,12 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 
 This plugin supports automatic updates via GitHub. Updates will appear in the standard WordPress **Plugins > Installed Plugins** update flow whenever a new release is published to the repository.
 
+If your repository is private, define your GitHub access token in `wp-config.php`:
+
+```php
+define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
+```
+
 ## Features
 
 ### Filters
@@ -29,14 +35,14 @@ This plugin supports automatic updates via GitHub. Updates will appear in the st
 - **Forms** — multi-select dropdown with search; choose one, many, or all forms
 - **Date range** — primary date range with a date picker
 - **Quick presets** — Last 7 days, Last 30 days, Last 90 days, Month to date, Year to date
-- **Granularity** — group data by Day, Week, or Month
+- **Granularity** — group data by Day, Week, or Month; automatically switches to hourly when a single day is selected
 - **Entries overlay** — toggle entries data on or off
 - **Compare range** — enable a second date range to compare periods side by side
 
 ### Dashboard
 
-- **Stat cards** — Total Views, Unique Visitors, Total Entries, Conversion Rate; each card shows a delta badge when a comparison period is active
-- **Line chart** — views over time with optional entries overlay and dashed comparison lines
+- **Stat cards** — Total Views, Total Entries, Conversion Rate; each card shows a delta badge when a comparison period is active
+- **Line chart** — views over time with optional entries overlay and dashed comparison lines; switches to hourly breakdown for single-day reports
 - **Bar chart** — views broken down by form (shown when multiple forms are in the result set)
 - **Data table** — full period-by-period breakdown including deltas and conversion rate
 
@@ -49,20 +55,40 @@ This plugin supports automatic updates via GitHub. Updates will appear in the st
 
 Filters are written to the URL when you run a report, so you can bookmark, share, or refresh a specific report view and it will restore automatically.
 
+### Date Format
+
+The date format used throughout the dashboard and exports can be set per user via **Screen Options** (top right of the page). Available options are:
+
+- DD/MM/YYYY
+- MM/DD/YYYY
+- YYYY-MM-DD
+- DD Mon YYYY
+- DD Month YYYY
+- WordPress default (inherits the format set under Settings > General)
+
+Each user's preference is saved independently so it does not affect other users.
+
 ## Data Source
 
-Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively. Unique visitors are counted as distinct IP addresses within the selected period. Entries are read from `wp_gf_entry` where `status = 'active'`.
+Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively, summing the `count` column for accurate view totals. Entries are read from `wp_gf_entry` where `status = 'active'`. All database queries are timezone-aware and offset against the site timezone configured under Settings > General, so date boundaries reflect local time rather than UTC.
 
 ## Changelog
 
 ### 1.0.3
-- Update the date format so uses default setting or allows to be set in Screen Options
+- Fixed date format display in chart and table — tokens now replaced in a single pass to prevent partial replacements corrupting month names
+- Added date format preference via Screen Options, saved per user via AJAX
+- Date pickers now reflect the chosen display format via Flatpickr's alt input
+- Dates in print header now use the chosen display format
 
 ### 1.0.2
-- Remove the unique visitors as will always be one, and fix the table alignments
+- Removed unique visitors stat (always returned 1 due to aggregated view rows)
+- Fixed table column alignment — period column left-aligned, all data columns right-aligned
+- Added hourly granularity, triggered automatically when a single day is selected
+- Added timezone offset via `CONVERT_TZ` so period grouping reflects site local time
 
 ### 1.0.1
-- Fix the views as was counting rows instead of getting total from database
+- Fixed view counts — queries now use `SUM(count)` instead of `COUNT(*)` to read the actual view totals stored in `wp_gf_form_view`
+- Fixed timezone handling — date range boundaries now convert from site local time to UTC before querying
 
 ### 1.0.0
 - Initial release

@@ -743,35 +743,37 @@
 
 	// Convert a Y-m-d database period to the user's preferred display format.
 	// Week (2026-21) and month (2026-05) periods are left as-is.
-	function formatPeriod(period, isHourly) {
-		if (isHourly) {
-			return period.split(' ')[1] || period;
-		}
-
-		const parts = period.split('-');
-		if (parts.length !== 3) return period;
-
-		const fmt  = GFVA.date_format || 'Y-m-d';
-		const year = parts[0];
-		const mon  = parts[1];
-		const day  = parts[2];
-		const mIdx = parseInt(mon, 10) - 1;
-		const dayInt = parseInt(day, 10);
-
-		const monthsFull  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-		const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-		// Replace tokens longest-first to avoid partial replacements
-		return fmt
-			.replace('F', monthsFull[mIdx]  || mon)
-			.replace('M', monthsShort[mIdx] || mon)
-			.replace('d', day)
-			.replace('j', String(dayInt))
-			.replace('m', mon)
-			.replace('n', String(mIdx + 1))
-			.replace('Y', year)
-			.replace('y', year.slice(2));
+function formatPeriod(period, isHourly) {
+	if (isHourly) {
+		return period.split(' ')[1] || period;
 	}
+
+	const parts = period.split('-');
+	if (parts.length !== 3) return period;
+
+	const fmt  = GFVA.date_format || 'Y-m-d';
+	const year = parts[0];
+	const mon  = parts[1];
+	const day  = parts[2];
+	const mIdx = parseInt(mon, 10) - 1;
+
+	const monthsFull  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+	const tokens = {
+		'F': monthsFull[mIdx]  || mon,
+		'M': monthsShort[mIdx] || mon,
+		'd': day,
+		'j': String(parseInt(day, 10)),
+		'm': mon,
+		'n': String(mIdx + 1),
+		'Y': year,
+		'y': year.slice(2),
+	};
+
+	// Replace all tokens in a single pass so they don't clobber each other
+	return fmt.replace(/[FMdjmnYy]/g, match => tokens[match] !== undefined ? tokens[match] : match);
+}
 
 	// Convert PHP date format tokens to Flatpickr tokens
 	function phpFormatToFlatpickr(phpFmt) {
