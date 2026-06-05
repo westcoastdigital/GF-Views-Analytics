@@ -3,7 +3,7 @@
  * Plugin Name: GF Views Analytics
  * Plugin URI:  https://simpliweb.com.au
  * Description: Analytics dashboard for Gravity Forms views and entries with charts, filtering, comparison, and PDF export.
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:      SimpliWeb
  * Author URI:  https://simpliweb.com.au
  * License:     GPL-2.0+
@@ -14,9 +14,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GFVA_VERSION', '1.0.3' );
+define( 'GFVA_VERSION', '1.0.4' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
+
+define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
 
 require_once GFVA_PATH . 'github-updater.php';
 
@@ -89,10 +91,10 @@ function gfva_enqueue_assets( $hook ) {
 	);
 
 	wp_localize_script( 'gfva-admin', 'GFVA', [
-		'ajax_url'              => admin_url( 'admin-ajax.php' ),
-		'nonce'                 => wp_create_nonce( 'gfva_nonce' ),
-		'date_format'           => gfva_get_date_format(),
-		'date_format_nonce'     => wp_create_nonce( 'gfva_date_format_nonce' ),
+		'ajax_url'          => admin_url( 'admin-ajax.php' ),
+		'nonce'             => wp_create_nonce( 'gfva_nonce' ),
+		'date_format'       => gfva_get_date_format(),
+		'date_format_nonce' => wp_create_nonce( 'gfva_date_format_nonce' ),
 	] );
 }
 
@@ -103,9 +105,6 @@ function gfva_render_page() {
 	include GFVA_PATH . 'templates/page.php';
 }
 
-/**
- * Add date format option to Screen Options panel.
- */
 add_filter( 'screen_settings', 'gfva_screen_options', 10, 2 );
 function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 	if ( $screen->id !== 'tools_page_gf-views-analytics' ) {
@@ -123,7 +122,6 @@ function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 		'd F Y' => 'DD Month YYYY (' . date( 'd F Y' ) . ')',
 	];
 
-	// Prepend WordPress default if it isn't already in the list
 	if ( ! isset( $options[ $wp_format ] ) ) {
 		$options = [ $wp_format => 'WordPress default (' . date( $wp_format ) . ')' ] + $options;
 	}
@@ -144,9 +142,6 @@ function gfva_screen_options( string $settings, WP_Screen $screen ): string {
 	return $settings;
 }
 
-/**
- * AJAX: save date format preference.
- */
 add_action( 'wp_ajax_gfva_save_date_format', 'gfva_ajax_save_date_format' );
 function gfva_ajax_save_date_format() {
 	check_ajax_referer( 'gfva_date_format_nonce', 'nonce' );
@@ -165,9 +160,6 @@ function gfva_ajax_save_date_format() {
 	wp_send_json_success( [ 'format' => $format ] );
 }
 
-/**
- * Get the current user's preferred date format, defaulting to WordPress setting.
- */
 function gfva_get_date_format(): string {
 	$saved = get_user_meta( get_current_user_id(), 'gfva_date_format', true );
 	return $saved ?: get_option( 'date_format' );
@@ -214,7 +206,6 @@ function gfva_ajax_get_data() {
 		wp_send_json_error( 'Date range is required.' );
 	}
 
-	// Auto hourly when a single day is selected
 	if ( $date_from === $date_to && $granularity === 'day' ) {
 		$granularity = 'hour';
 	}
@@ -235,9 +226,6 @@ function gfva_ajax_get_data() {
 	wp_send_json_success( $result );
 }
 
-/**
- * Convert a Y-m-d date string from site timezone to UTC datetime strings.
- */
 function gfva_local_to_utc( string $date, bool $end_of_day = false ): string {
 	$time  = $end_of_day ? ' 23:59:59' : ' 00:00:00';
 	$local = new DateTime( $date . $time, wp_timezone() );
@@ -245,9 +233,6 @@ function gfva_local_to_utc( string $date, bool $end_of_day = false ): string {
 	return $local->format( 'Y-m-d H:i:s' );
 }
 
-/**
- * Get the site timezone offset string for CONVERT_TZ e.g. +08:00
- */
 function gfva_get_tz_offset(): string {
 	$offset  = wp_timezone()->getOffset( new DateTime( 'now', new DateTimeZone( 'UTC' ) ) );
 	$hours   = intdiv( abs( $offset ), 3600 );
@@ -256,9 +241,6 @@ function gfva_get_tz_offset(): string {
 	return sprintf( '%s%02d:%02d', $sign, $hours, $minutes );
 }
 
-/**
- * Build time-series data for a date range.
- */
 function gfva_fetch_period( array $form_ids, string $from, string $to, string $granularity, bool $include_entries ): array {
 	global $wpdb;
 
@@ -295,7 +277,7 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 
 	$result = [ 'views' => $views_data ];
 
-	// ---- Per-form breakdown ----
+	// ---- Per-form views breakdown ----
 	$breakdown_sql = "
 		SELECT form_id, DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, SUM(count) AS total
 		FROM {$wpdb->prefix}gf_form_view
@@ -322,7 +304,37 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 	}
 	$result['by_form'] = $by_form;
 
-	// ---- Entries ----
+	// ---- Per-form entries breakdown ----
+	if ( $include_entries ) {
+		$entry_breakdown_sql = "
+			SELECT form_id, DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, COUNT(*) AS total
+			FROM {$wpdb->prefix}gf_entry
+			WHERE status = 'active'
+			  AND date_created BETWEEN %s AND %s
+		";
+		$ebp = [ $tz_offset, $date_format, gfva_local_to_utc( $from ), gfva_local_to_utc( $to, true ) ];
+
+		if ( ! empty( $form_ids ) ) {
+			$placeholders        = implode( ',', array_fill( 0, count( $form_ids ), '%d' ) );
+			$entry_breakdown_sql .= " AND form_id IN ($placeholders)";
+			$ebp                  = array_merge( $ebp, $form_ids );
+		}
+
+		$entry_breakdown_sql .= ' GROUP BY form_id, period ORDER BY period ASC';
+		$entry_breakdown_rows = $wpdb->get_results( $wpdb->prepare( $entry_breakdown_sql, ...$ebp ) );
+
+		$by_form_entries = [];
+		foreach ( $entry_breakdown_rows as $row ) {
+			$fid = (int) $row->form_id;
+			if ( ! isset( $by_form_entries[ $fid ] ) ) {
+				$by_form_entries[ $fid ] = [];
+			}
+			$by_form_entries[ $fid ][ $row->period ] = (int) $row->total;
+		}
+		$result['by_form_entries'] = $by_form_entries;
+	}
+
+	// ---- Entries time-series ----
 	if ( $include_entries ) {
 		$entries_sql = "
 			SELECT DATE_FORMAT(CONVERT_TZ(date_created, '+00:00', %s), %s) AS period, COUNT(*) AS total
@@ -351,9 +363,6 @@ function gfva_fetch_period( array $form_ids, string $from, string $to, string $g
 	return $result;
 }
 
-/**
- * Fetch summary totals for the stats bar.
- */
 function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $include_entries ): array {
 	global $wpdb;
 

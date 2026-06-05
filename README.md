@@ -18,16 +18,6 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 2. Activate the plugin through **Plugins > Installed Plugins**
 3. Navigate to **Tools > Views Analytics**
 
-### GitHub Updates
-
-This plugin supports automatic updates via GitHub. Updates will appear in the standard WordPress **Plugins > Installed Plugins** update flow whenever a new release is published to the repository.
-
-If your repository is private, define your GitHub access token in `wp-config.php`:
-
-```php
-define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
-```
-
 ## Features
 
 ### Filters
@@ -43,7 +33,8 @@ define( 'GITHUB_ACCESS_TOKEN', 'your_token_here' );
 
 - **Stat cards** — Total Views, Total Entries, Conversion Rate; each card shows a delta badge when a comparison period is active
 - **Line chart** — views over time with optional entries overlay and dashed comparison lines; switches to hourly breakdown for single-day reports
-- **Bar chart** — views broken down by form (shown when multiple forms are in the result set)
+- **Views by form bar chart** — total views broken down per form (shown when multiple forms are in the result set)
+- **Entries by form bar chart** — total entries broken down per form (shown when multiple forms are in the result set and entries overlay is on)
 - **Data table** — full period-by-period breakdown including deltas and conversion rate
 
 ### Exports
@@ -73,6 +64,10 @@ Each user's preference is saved independently so it does not affect other users.
 Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively, summing the `count` column for accurate view totals. Entries are read from `wp_gf_entry` where `status = 'active'`. All database queries are timezone-aware and offset against the site timezone configured under Settings > General, so date boundaries reflect local time rather than UTC.
 
 ## Changelog
+
+### 1.0.4
+- Added Entries by form bar chart alongside the existing Views by form chart
+- Fixed missing `by_form` data assignment that prevented both breakdown charts from rendering
 
 ### 1.0.3
 - Fixed date format display in chart and table — tokens now replaced in a single pass to prevent partial replacements corrupting month names

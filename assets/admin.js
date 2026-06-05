@@ -16,8 +16,9 @@
 		activePreset:   null,
 	};
 
-	let mainChart      = null;
-	let breakdownChart = null;
+	let mainChart             = null;
+	let breakdownChart        = null;
+	let entriesBreakdownChart = null;
 
 	$(document).ready(function () {
 		initDatePickers();
@@ -49,7 +50,6 @@
 			}, function (res) {
 				if (res.success) {
 					GFVA.date_format = format;
-					// Re-init date pickers with new format
 					['#gfva-date-from','#gfva-date-to','#gfva-compare-from','#gfva-compare-to'].forEach(function (sel) {
 						const el = document.querySelector(sel);
 						if (el && el._flatpickr) {
@@ -57,7 +57,6 @@
 						}
 					});
 					initDatePickers();
-					// Re-run report if results are showing so dates re-render
 					if ($('#gfva-results').is(':visible')) {
 						renderResults(state.lastData);
 					}
@@ -81,7 +80,6 @@
 		flatpickr('#gfva-compare-to',   { ...opts, onChange: (d) => { state.compareTo   = toYmd(d[0]); } });
 	}
 
-	// Always store internally as Y-m-d for AJAX
 	function toYmd(dateObj) {
 		if (!dateObj) return '';
 		const y = dateObj.getFullYear();
@@ -90,7 +88,6 @@
 		return `${y}-${m}-${d}`;
 	}
 
-	// Convert PHP date format tokens to Flatpickr tokens
 	function phpFormatToFlatpickr(phpFmt) {
 		const map = {
 			'd': 'd', 'j': 'j', 'm': 'm', 'n': 'n',
@@ -537,11 +534,39 @@
 
 		if (formIds.length <= 1) {
 			$('#gfva-breakdown-card').hide();
+			$('#gfva-entries-breakdown-card').hide();
 			return;
 		}
 
+		const palette = [
+			'rgba(91,79,207,0.8)',  'rgba(47,184,160,0.8)', 'rgba(232,71,76,0.8)',
+			'rgba(245,166,35,0.8)', 'rgba(99,179,237,0.8)', 'rgba(184,107,232,0.8)',
+			'rgba(237,137,54,0.8)', 'rgba(72,187,120,0.8)',
+		];
+
+		const barOpts = {
+			indexAxis:           'y',
+			responsive:          true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: { display: false },
+				tooltip: {
+					backgroundColor: '#fff',
+					borderColor:     '#e2e6ea',
+					borderWidth:     1,
+					titleColor:      '#1a202c',
+					bodyColor:       '#718096',
+					padding:         10,
+				},
+			},
+			scales: {
+				x: { grid: { color: '#f0f2f5' }, ticks: { color: '#718096', font: { size: 11 } }, beginAtZero: true },
+				y: { grid: { display: false },   ticks: { color: '#718096', font: { size: 12 } } },
+			},
+		};
+
+		// ---- Views by form ----
 		$('#gfva-breakdown-card').show();
-		const canvas = document.getElementById('gfva-breakdown-chart');
 		if (breakdownChart) breakdownChart.destroy();
 
 		const formTotals = {};
@@ -550,51 +575,66 @@
 		});
 
 		const sorted = formIds.sort((a, b) => formTotals[b] - formTotals[a]);
-		const labels  = sorted.map(fid => {
+		const labels = sorted.map(fid => {
 			const form = state.forms.find(f => f.id === fid);
 			return form ? form.title : `Form #${fid}`;
 		});
-		const values  = sorted.map(fid => formTotals[fid]);
 
-		const palette = [
-			'rgba(91,79,207,0.8)',  'rgba(47,184,160,0.8)', 'rgba(232,71,76,0.8)',
-			'rgba(245,166,35,0.8)', 'rgba(99,179,237,0.8)', 'rgba(184,107,232,0.8)',
-			'rgba(237,137,54,0.8)', 'rgba(72,187,120,0.8)',
-		];
-
-		breakdownChart = new Chart(canvas, {
+		breakdownChart = new Chart(document.getElementById('gfva-breakdown-chart'), {
 			type: 'bar',
 			data: {
 				labels,
 				datasets: [{
 					label:           'Total Views',
-					data:            values,
+					data:            sorted.map(fid => formTotals[fid]),
 					backgroundColor: sorted.map((_, i) => palette[i % palette.length]),
 					borderRadius:    5,
 					borderSkipped:   false,
 				}],
 			},
-			options: {
-				indexAxis:           'y',
-				responsive:          true,
-				maintainAspectRatio: false,
-				plugins: {
-					legend: { display: false },
-					tooltip: {
-						backgroundColor: '#fff',
-						borderColor:     '#e2e6ea',
-						borderWidth:     1,
-						titleColor:      '#1a202c',
-						bodyColor:       '#718096',
-						padding:         10,
-					},
-				},
-				scales: {
-					x: { grid: { color: '#f0f2f5' }, ticks: { color: '#718096', font: { size: 11 } }, beginAtZero: true },
-					y: { grid: { display: false },   ticks: { color: '#718096', font: { size: 12 } } },
-				},
-			},
+			options: barOpts,
 		});
+
+		// ---- Entries by form ----
+		if (state.includeEntries) {
+			const byFormEntries = data.primary.by_form_entries || {};
+			const entryFormIds  = Object.keys(byFormEntries).map(Number);
+
+			if (entryFormIds.length > 0) {
+				$('#gfva-entries-breakdown-card').show();
+				if (entriesBreakdownChart) entriesBreakdownChart.destroy();
+
+				const entryTotals = {};
+				entryFormIds.forEach(fid => {
+					entryTotals[fid] = Object.values(byFormEntries[fid]).reduce((a, b) => a + b, 0);
+				});
+
+				const entrySorted = entryFormIds.sort((a, b) => entryTotals[b] - entryTotals[a]);
+				const entryLabels = entrySorted.map(fid => {
+					const form = state.forms.find(f => f.id === fid);
+					return form ? form.title : `Form #${fid}`;
+				});
+
+				entriesBreakdownChart = new Chart(document.getElementById('gfva-entries-breakdown-chart'), {
+					type: 'bar',
+					data: {
+						labels: entryLabels,
+						datasets: [{
+							label:           'Total Entries',
+							data:            entrySorted.map(fid => entryTotals[fid]),
+							backgroundColor: entrySorted.map((_, i) => palette[i % palette.length]),
+							borderRadius:    5,
+							borderSkipped:   false,
+						}],
+					},
+					options: barOpts,
+				});
+			} else {
+				$('#gfva-entries-breakdown-card').hide();
+			}
+		} else {
+			$('#gfva-entries-breakdown-card').hide();
+		}
 	}
 
 	function renderTable(data) {
@@ -668,7 +708,7 @@
 			: 'All forms';
 		const header = $('<div class="gfva-print-header">').html(`
 			<h2 style="margin:0 0 6px;font-size:16px;">GF Views Analytics Report</h2>
-			<p>Period: ${escHtml(formatPeriod(state.dateFrom, false))} – ${escHtml(formatPeriod(state.dateTo, false))}</p>
+			<p>Period: ${escHtml(formatPeriod(state.dateFrom, false))} - ${escHtml(formatPeriod(state.dateTo, false))}</p>
 			<p>Forms: ${escHtml(forms)}</p>
 			<p>Generated: ${new Date().toLocaleString()}</p>
 		`);
@@ -741,41 +781,37 @@
 		return Number(n).toLocaleString();
 	}
 
-	// Convert a Y-m-d database period to the user's preferred display format.
-	// Week (2026-21) and month (2026-05) periods are left as-is.
-function formatPeriod(period, isHourly) {
-	if (isHourly) {
-		return period.split(' ')[1] || period;
+	function formatPeriod(period, isHourly) {
+		if (isHourly) {
+			return period.split(' ')[1] || period;
+		}
+
+		const parts = period.split('-');
+		if (parts.length !== 3) return period;
+
+		const fmt  = GFVA.date_format || 'Y-m-d';
+		const year = parts[0];
+		const mon  = parts[1];
+		const day  = parts[2];
+		const mIdx = parseInt(mon, 10) - 1;
+
+		const monthsFull  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+		const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+		const tokens = {
+			'F': monthsFull[mIdx]  || mon,
+			'M': monthsShort[mIdx] || mon,
+			'd': day,
+			'j': String(parseInt(day, 10)),
+			'm': mon,
+			'n': String(mIdx + 1),
+			'Y': year,
+			'y': year.slice(2),
+		};
+
+		return fmt.replace(/[FMdjmnYy]/g, match => tokens[match] !== undefined ? tokens[match] : match);
 	}
 
-	const parts = period.split('-');
-	if (parts.length !== 3) return period;
-
-	const fmt  = GFVA.date_format || 'Y-m-d';
-	const year = parts[0];
-	const mon  = parts[1];
-	const day  = parts[2];
-	const mIdx = parseInt(mon, 10) - 1;
-
-	const monthsFull  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-	const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-	const tokens = {
-		'F': monthsFull[mIdx]  || mon,
-		'M': monthsShort[mIdx] || mon,
-		'd': day,
-		'j': String(parseInt(day, 10)),
-		'm': mon,
-		'n': String(mIdx + 1),
-		'Y': year,
-		'y': year.slice(2),
-	};
-
-	// Replace all tokens in a single pass so they don't clobber each other
-	return fmt.replace(/[FMdjmnYy]/g, match => tokens[match] !== undefined ? tokens[match] : match);
-}
-
-	// Convert PHP date format tokens to Flatpickr tokens
 	function phpFormatToFlatpickr(phpFmt) {
 		const map = {
 			'd': 'd', 'j': 'j', 'm': 'm', 'n': 'n',

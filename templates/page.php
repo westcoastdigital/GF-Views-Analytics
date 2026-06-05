@@ -176,6 +176,15 @@
 			</div>
 		</div>
 
+		<div class="gfva-chart-card" id="gfva-entries-breakdown-card">
+			<div class="gfva-chart-card__header">
+				<h2 class="gfva-chart-card__title">Entries by form</h2>
+			</div>
+			<div class="gfva-chart-card__body gfva-chart-card__body--short">
+				<canvas id="gfva-entries-breakdown-chart"></canvas>
+			</div>
+		</div>
+
 		<!-- DATA TABLE -->
 		<div class="gfva-table-card">
 			<div class="gfva-table-card__header">
