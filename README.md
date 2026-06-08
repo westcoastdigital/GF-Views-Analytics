@@ -68,6 +68,9 @@ White label settings are saved per user and take effect immediately when running
 
 ## Changelog
 
+### 1.0.7
+- Fixed **Views over time** graph colours match the legend and renamed to Conversion over time
+
 ### 1.0.6
 - Added **Views Analytics** link to the Gravity Forms admin menu under **Forms > Views Analytics**
 - Added **Views Analytics** shortcut to the WordPress admin bar under the Gravity Forms node
