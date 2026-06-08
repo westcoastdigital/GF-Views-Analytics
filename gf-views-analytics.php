@@ -459,3 +459,37 @@ function gfva_fetch_summary( array $form_ids, string $from, string $to, bool $in
 
 	return $summary;
 }
+
+/**
+ * Add admin links
+ */
+function gfva_add_menu_to_entries_menu() {
+    if (
+        ! isset( $_GET['page'] ) ||
+        ! in_array( $_GET['page'], [ 'gf_entries', 'gf_edit_forms' ], true )
+    ) {
+        return;
+    }
+
+    ?>
+    <script>
+    jQuery(function($) {
+        $('.subsubsub').append(
+            '<li>| <a href="<?php echo admin_url( 'tools.php?page=gf-views-analytics' ); ?>">View Analytics</a></li>'
+        );
+    });
+    </script>
+    <?php
+}
+add_action( 'admin_footer', 'gfva_add_menu_to_entries_menu');
+
+function gfva_admin_bar_menu( $wp_admin_bar ) {
+
+    $wp_admin_bar->add_node( [
+        'id'    => 'gfva_analytics',
+        'title' => 'Form Analytics',
+        'href'  => admin_url( 'tools.php?page=gf-views-analytics' ),
+    ] );
+
+}
+add_action( 'admin_bar_menu', 'gfva_admin_bar_menu', 100 );
