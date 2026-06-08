@@ -698,6 +698,10 @@
   .gfva-chart-card__body {
     height: 260px !important;
     padding: 12px 16px 16px !important;
+    /* Force the container (and its canvas) to stay within page width */
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .gfva-chart-card__body--short {
     height: 200px !important;
@@ -705,6 +709,14 @@
 
   .gfva-chart-card__header {
     padding: 12px 16px 0 !important;
+  }
+
+  /* Force canvases to fill available width in print */
+  .gfva-chart-card__body canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
   }
 
   /* Shrink table to fit all columns */
@@ -813,6 +825,9 @@
   .gfva-chart-card__body {
     height: 260px !important;
     padding: 12px 16px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
   .gfva-chart-card__body--short {
     height: 200px !important;
@@ -820,6 +835,13 @@
 
   .gfva-chart-card__header {
     padding: 12px 16px 0 !important;
+  }
+
+  .gfva-chart-card__body canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
   }
 
   .gfva-table {

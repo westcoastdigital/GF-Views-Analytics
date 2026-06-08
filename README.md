@@ -4,7 +4,7 @@ A WordPress plugin that provides an analytics dashboard for Gravity Forms views 
 
 ## Description
 
-GF Views Analytics adds a reporting page under **Tools > Views Analytics** that lets you visualise and analyse Gravity Forms view and entry data over time. Filter by form and date range, compare periods side by side, overlay entries against views, and export reports as PDF or CSV.
+GF Views Analytics adds a reporting page under **Tools > Views Analytics** that lets you visualise and analyse Gravity Forms view and entry data over time. Filter by form and date range, compare periods side by side, overlay entries against views, and export reports as PDF or CSV. The dashboard is also accessible via **Forms > Views Analytics** in the Gravity Forms admin menu and via the admin bar.
 
 ## Requirements
 
@@ -16,7 +16,7 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 
 1. Upload the `gf-views-analytics` folder to `/wp-content/plugins/`
 2. Activate the plugin through **Plugins > Installed Plugins**
-3. Navigate to **Tools > Views Analytics**
+3. Navigate to **Tools > Views Analytics**, **Forms > Views Analytics**, or use the admin bar shortcut
 
 ### Filters
 
@@ -65,6 +65,14 @@ The PDF report header can be customised per user via **Screen Options**. Options
 - **Logo** — replaces the plugin icon and page heading; accepts a URL or choose from the media library. Recommended height: 40px.
 
 White label settings are saved per user and take effect immediately when running a new report.
+
+## Changelog
+
+### 1.0.6
+- Added **Views Analytics** link to the Gravity Forms admin menu under **Forms > Views Analytics**
+- Added **Views Analytics** shortcut to the WordPress admin bar under the Gravity Forms node
+- Fixed PDF export charts being cut off — charts now resize to fit the full A4 page width before the print dialog opens, and all chart canvases are constrained within their containers in the print stylesheet
+- Added data labels to all charts: values appear above each point on the line chart (suppressed when the dataset has more than 60 points to avoid crowding) and right-aligned inside each bar on the Views by form and Entries by form bar charts
 
 ## Data Source
 
