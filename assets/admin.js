@@ -463,6 +463,66 @@
 		$(selector).text(label).removeClass('up down flat').addClass(cls);
 	}
 
+	// ── Inline data-label plugin (shared across all charts) ──────────
+	const gfvaDataLabels = {
+		id: 'gfvaDataLabels',
+		afterDatasetsDraw(chart) {
+			const { ctx, data } = chart;
+			const chartArea = chart.chartArea;
+			if (!chartArea) return; // not ready yet — bail safely
+
+			const type = chart.config.type;
+
+			ctx.save();
+			ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+			if (type === 'line') {
+				data.datasets.forEach(function (ds, dsIdx) {
+					const meta = chart.getDatasetMeta(dsIdx);
+					if (meta.hidden) return;
+					meta.data.forEach(function (point, idx) {
+						const value = ds.data[idx];
+						if (!value && value !== 0) return;
+						const label = Number(value).toLocaleString();
+						ctx.fillStyle    = ds.borderColor || '#333';
+						ctx.textAlign    = 'center';
+						ctx.textBaseline = 'bottom';
+						ctx.fillText(label, point.x, point.y - 6);
+					});
+				});
+			} else if (type === 'bar') {
+				data.datasets.forEach(function (ds, dsIdx) {
+					const meta = chart.getDatasetMeta(dsIdx);
+					if (meta.hidden) return;
+					meta.data.forEach(function (bar, idx) {
+						const value = ds.data[idx];
+						if (!value && value !== 0) return;
+						const label      = Number(value).toLocaleString();
+						const barRight   = bar.x;
+						const barCentreY = bar.y;
+						const padding    = 6;
+						const textWidth  = ctx.measureText(label).width;
+						const xPos       = barRight - padding;
+
+						if (xPos - textWidth > chartArea.left + 2) {
+							ctx.fillStyle    = 'rgba(255,255,255,0.95)';
+							ctx.textAlign    = 'right';
+							ctx.textBaseline = 'middle';
+							ctx.fillText(label, xPos, barCentreY);
+						} else {
+							ctx.fillStyle    = '#444';
+							ctx.textAlign    = 'left';
+							ctx.textBaseline = 'middle';
+							ctx.fillText(label, barRight + padding, barCentreY);
+						}
+					});
+				});
+			}
+
+			ctx.restore();
+		},
+	};
+
 	function renderMainChart(data) {
 		const canvas = document.getElementById('gfva-main-chart');
 		if (mainChart) { mainChart.destroy(); }
@@ -537,6 +597,7 @@
 		mainChart = new Chart(canvas, {
 			type: 'line',
 			data: { labels, datasets },
+			plugins: allPeriods.length <= 60 ? [gfvaDataLabels] : [],
 			options: {
 				responsive:          true,
 				maintainAspectRatio: false,
@@ -646,6 +707,7 @@
 					borderSkipped:   false,
 				}],
 			},
+			plugins: [gfvaDataLabels],
 			options: barOpts,
 		});
 
@@ -681,6 +743,7 @@
 							borderSkipped:   false,
 						}],
 					},
+					plugins: [gfvaDataLabels],
 					options: barOpts,
 				});
 			} else {
@@ -792,7 +855,22 @@
 
 	/* ── Exports ────────────────────────────────────── */
 	function exportPdf() {
-		window.print();
+		const printWidth = 794;
+		const charts = [mainChart, breakdownChart, entriesBreakdownChart].filter(Boolean);
+
+		charts.forEach(function (chart) {
+			chart.resize(printWidth, chart.canvas.parentNode.offsetHeight || 260);
+		});
+
+		setTimeout(function () {
+			window.print();
+
+			setTimeout(function () {
+				charts.forEach(function (chart) {
+					chart.resize();
+				});
+			}, 1000);
+		}, 150);
 	}
 
 	function exportCsv() {
