@@ -463,68 +463,6 @@
 		$(selector).text(label).removeClass('up down flat').addClass(cls);
 	}
 
-	// ── Inline data-label plugin (shared across all charts) ──────────
-	const gfvaDataLabels = {
-		id: 'gfvaDataLabels',
-		afterDatasetsDraw(chart) {
-			const { ctx, data, chartArea } = chart;
-			const type = chart.config.type;
-
-			ctx.save();
-			ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-			if (type === 'line') {
-				// Show value at each visible point
-				data.datasets.forEach(function (ds, dsIdx) {
-					const meta = chart.getDatasetMeta(dsIdx);
-					if (meta.hidden) return;
-					meta.data.forEach(function (point, idx) {
-						const value = ds.data[idx];
-						if (!value && value !== 0) return;
-						const label = Number(value).toLocaleString();
-						ctx.fillStyle = ds.borderColor || '#333';
-						ctx.textAlign = 'center';
-						ctx.textBaseline = 'bottom';
-						// Offset upward so labels don't sit on the line
-						ctx.fillText(label, point.x, point.y - 6);
-					});
-				});
-			} else if (type === 'bar') {
-				// Horizontal bars (indexAxis: 'y') — label inside bar, right-aligned
-				data.datasets.forEach(function (ds, dsIdx) {
-					const meta = chart.getDatasetMeta(dsIdx);
-					if (meta.hidden) return;
-					meta.data.forEach(function (bar, idx) {
-						const value = ds.data[idx];
-						if (!value && value !== 0) return;
-						const label = Number(value).toLocaleString();
-
-						const barRight  = bar.x;  // right edge of the bar
-						const barCentreY = bar.y;
-						const padding   = 6;
-						const textWidth = ctx.measureText(label).width;
-						const xPos      = barRight - padding;
-
-						// Only draw inside if there's enough room; otherwise draw outside
-						if (xPos - textWidth > chartArea.left + 2) {
-							ctx.fillStyle = 'rgba(255,255,255,0.95)';
-							ctx.textAlign  = 'right';
-							ctx.textBaseline = 'middle';
-							ctx.fillText(label, xPos, barCentreY);
-						} else {
-							ctx.fillStyle = '#444';
-							ctx.textAlign  = 'left';
-							ctx.textBaseline = 'middle';
-							ctx.fillText(label, barRight + padding, barCentreY);
-						}
-					});
-				});
-			}
-
-			ctx.restore();
-		},
-	};
-
 	function renderMainChart(data) {
 		const canvas = document.getElementById('gfva-main-chart');
 		if (mainChart) { mainChart.destroy(); }
@@ -599,7 +537,6 @@
 		mainChart = new Chart(canvas, {
 			type: 'line',
 			data: { labels, datasets },
-			plugins: allPeriods.length <= 60 ? [gfvaDataLabels] : [],
 			options: {
 				responsive:          true,
 				maintainAspectRatio: false,
@@ -629,12 +566,11 @@
 			},
 		});
 
-		const colours = ['rgba(91,79,207,1)', 'rgba(232,71,76,1)', 'rgba(47,184,160,1)', 'rgba(245,166,35,0.9)'];
 		const $legend = $('#gfva-chart-legend').empty();
-		datasets.forEach(function (ds, i) {
+		datasets.forEach(function (ds) {
 			$legend.append(
 				$('<div class="gfva-legend-item">').append(
-					$('<div class="gfva-legend-dot">').css('background', colours[i] || '#999'),
+					$('<div class="gfva-legend-dot">').css('background', ds.borderColor || '#999'),
 					$('<span>').text(ds.label)
 				)
 			);
@@ -710,7 +646,6 @@
 					borderSkipped:   false,
 				}],
 			},
-			plugins: [gfvaDataLabels],
 			options: barOpts,
 		});
 
@@ -746,7 +681,6 @@
 							borderSkipped:   false,
 						}],
 					},
-					plugins: [gfvaDataLabels],
 					options: barOpts,
 				});
 			} else {
@@ -858,25 +792,7 @@
 
 	/* ── Exports ────────────────────────────────────── */
 	function exportPdf() {
-		// Resize charts to page width before printing, then restore after.
-		// Chart.js holds pixel dimensions; without this charts get clipped.
-		const printWidth = 794; // ~A4 content width at 96dpi minus margins
-		const charts = [mainChart, breakdownChart, entriesBreakdownChart].filter(Boolean);
-
-		charts.forEach(function (chart) {
-			chart.resize(printWidth, chart.canvas.parentNode.offsetHeight || 260);
-		});
-
-		setTimeout(function () {
-			window.print();
-
-			// Restore after print dialog closes
-			setTimeout(function () {
-				charts.forEach(function (chart) {
-					chart.resize();
-				});
-			}, 1000);
-		}, 150);
+		window.print();
 	}
 
 	function exportCsv() {
