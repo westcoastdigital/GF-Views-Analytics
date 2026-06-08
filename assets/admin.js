@@ -578,7 +578,7 @@
 
 		const title = isHourly
 			? 'Views by hour' + (compare ? ' (with comparison)' : '')
-			: 'Views over time' + (compare ? ' (with comparison)' : '');
+			: 'Conversion over time' + (compare ? ' (with comparison)' : '');
 		$('#gfva-chart-title').text(title);
 	}
 

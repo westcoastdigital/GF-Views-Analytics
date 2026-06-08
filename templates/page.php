@@ -158,7 +158,7 @@
 		<!-- MAIN CHART -->
 		<div class="gfva-chart-card">
 			<div class="gfva-chart-card__header">
-				<h2 class="gfva-chart-card__title" id="gfva-chart-title">Views over time</h2>
+				<h2 class="gfva-chart-card__title" id="gfva-chart-title">Conversion over time</h2>
 				<div class="gfva-chart-legend" id="gfva-chart-legend"></div>
 			</div>
 			<div class="gfva-chart-card__body">
