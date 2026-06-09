@@ -35,6 +35,8 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 - **Entries by form bar chart** — total entries broken down per form (shown when multiple forms are in the result set and entries overlay is on)
 - **Data table** — full period-by-period breakdown including deltas and conversion rate
 
+![Alt text](/assets/screenshot.png?raw=true "Dashboard")
+
 ### Exports
 
 - **PDF** — opens the browser print dialog with a print stylesheet optimised for A4 portrait; includes a report header with period, forms, and generated timestamp
@@ -67,6 +69,9 @@ The PDF report header can be customised per user via **Screen Options**. Options
 White label settings are saved per user and take effect immediately when running a new report.
 
 ## Changelog
+
+### 1.0.8
+- Fixed **Graph Values** graph values dropped off
 
 ### 1.0.7
 - Fixed **Views over time** graph colours match the legend and renamed to Conversion over time
