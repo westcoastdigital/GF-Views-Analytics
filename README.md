@@ -35,7 +35,7 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 - **Entries by form bar chart** — total entries broken down per form (shown when multiple forms are in the result set and entries overlay is on)
 - **Data table** — full period-by-period breakdown including deltas and conversion rate
 
-![Alt text](/assets/screenshot.png?raw=true "Dashboard")
+![Dashboard](assets/screenshot.png)
 
 ### Exports
 
@@ -107,7 +107,7 @@ White label settings are saved per user and take effect immediately when running
 
 ### 1.0.0
 - Initial release
-- 
+
 ## Data Source
 
 Views are read from the `wp_gf_form_view` table that Gravity Forms maintains natively, summing the `count` column for accurate view totals. Entries are read from `wp_gf_entry` where `status = 'active'`. All database queries are timezone-aware and offset against the site timezone configured under Settings > General, so date boundaries reflect local time rather than UTC.
