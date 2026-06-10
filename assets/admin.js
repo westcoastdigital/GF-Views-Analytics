@@ -420,6 +420,7 @@
 	/* ── Render ─────────────────────────────────────── */
 	function renderResults(data) {
 		renderStats(data);
+		renderCompareStats(data);
 		renderMainChart(data);
 		renderBreakdownChart(data);
 		renderTable(data);
@@ -451,6 +452,74 @@
 		} else {
 			$('.gfva-stat-card__compare').text('');
 		}
+	}
+
+	function renderCompareStats(data) {
+		const $wrap = $('#gfva-compare-stats');
+		$wrap.empty();
+
+		if (!state.compareEnabled || !data.compare_summary) {
+			$wrap.hide();
+			return;
+		}
+
+		const p = data.summary;
+		const c = data.compare_summary;
+
+		const primaryLabel = formatPeriod(state.dateFrom, false) + ' – ' + formatPeriod(state.dateTo, false);
+		const compareLabel = formatPeriod(state.compareFrom, false) + ' – ' + formatPeriod(state.compareTo, false);
+
+		// Views cards
+		$wrap.append(makeCompareCard(
+			false, 'Total Views', primaryLabel, p.total_views,
+			'rgba(91,79,207,1)', 'rgba(91,79,207,0.1)', viewsIcon()
+		));
+		$wrap.append(makeCompareCard(
+			true, 'Total Views', compareLabel, c.total_views,
+			'rgba(232,71,76,1)', 'rgba(232,71,76,0.08)', viewsIcon()
+		));
+
+		// Entries cards (only when entries overlay is on)
+		if (state.includeEntries) {
+			$wrap.append(makeCompareCard(
+				false, 'Total Entries', primaryLabel, p.total_entries,
+				'rgba(47,184,160,1)', 'rgba(47,184,160,0.08)', entriesIcon()
+			));
+			$wrap.append(makeCompareCard(
+				true, 'Total Entries', compareLabel, c.total_entries,
+				'rgba(245,166,35,1)', 'rgba(245,166,35,0.08)', entriesIcon()
+			));
+		}
+
+		$wrap.show();
+	}
+
+	function makeCompareCard(isCompare, metric, rangeLabel, value, accentColor, bgColor, iconSvg) {
+		const $card = $('<div class="gfva-compare-stat-card' + (isCompare ? ' gfva-compare-stat-card--compare' : '') + '">');
+
+		$card.append(
+			$('<div class="gfva-compare-stat-card__accent">').css('background', accentColor)
+		);
+
+		const $icon = $('<div class="gfva-compare-stat-card__icon">').css({ background: bgColor, color: accentColor });
+		$icon.html(iconSvg);
+		$card.append($icon);
+
+		const $body = $('<div class="gfva-compare-stat-card__body">');
+		$body.append( $('<div class="gfva-compare-stat-card__value">').text(formatNumber(value)) );
+		$body.append( $('<div class="gfva-compare-stat-card__metric">').text(metric) );
+		$body.append( $('<div class="gfva-compare-stat-card__range">').css('color', accentColor).text(rangeLabel) );
+		$card.append($body);
+
+		return $card;
+	}
+
+	function viewsIcon() {
+		return '<svg viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
+	}
+
+	function entriesIcon() {
+		return '<svg viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 	}
 
 	function renderDelta(selector, current, previous, isPct) {

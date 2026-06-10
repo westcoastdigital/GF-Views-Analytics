@@ -155,6 +155,9 @@
 			</div>
 		</div>
 
+		<!-- COMPARE STAT CARDS (only shown when compare is active) -->
+		<div class="gfva-compare-stats" id="gfva-compare-stats" style="display:none;"></div>
+
 		<!-- MAIN CHART -->
 		<div class="gfva-chart-card">
 			<div class="gfva-chart-card__header">

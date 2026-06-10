@@ -30,6 +30,7 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 ### Dashboard
 
 - **Stat cards** — Total Views, Total Entries, Conversion Rate; each card shows a delta badge when a comparison period is active
+- **Comparison breakdown cards** — when a compare range is active, a row of cards appears above the main chart showing Total Views and Total Entries for each date range individually, colour-coded to match the chart series (purple/red for views, teal/amber for entries)
 - **Line chart** — views over time with optional entries overlay and dashed comparison lines; switches to hourly breakdown for single-day reports
 - **Views by form bar chart** — total views broken down per form (shown when multiple forms are in the result set)
 - **Entries by form bar chart** — total entries broken down per form (shown when multiple forms are in the result set and entries overlay is on)
@@ -69,6 +70,9 @@ The PDF report header can be customised per user via **Screen Options**. Options
 White label settings are saved per user and take effect immediately when running a new report.
 
 ## Changelog
+
+### 1.1.0
+- Added comparison breakdown cards — when a compare range is active, a row of stat cards appears above the main chart showing Total Views and Total Entries for each date range individually, with the date range displayed on each card and colours matching the corresponding chart series
 
 ### 1.0.8
 - Fixed **Graph Values** graph values dropped off
