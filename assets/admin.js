@@ -420,7 +420,6 @@
 	/* ── Render ─────────────────────────────────────── */
 	function renderResults(data) {
 		renderStats(data);
-		renderCompareStats(data);
 		renderMainChart(data);
 		renderBreakdownChart(data);
 		renderTable(data);
@@ -452,74 +451,6 @@
 		} else {
 			$('.gfva-stat-card__compare').text('');
 		}
-	}
-
-	function renderCompareStats(data) {
-		const $wrap = $('#gfva-compare-stats');
-		$wrap.empty();
-
-		if (!state.compareEnabled || !data.compare_summary) {
-			$wrap.hide();
-			return;
-		}
-
-		const p = data.summary;
-		const c = data.compare_summary;
-
-		const primaryLabel = formatPeriod(state.dateFrom, false) + ' – ' + formatPeriod(state.dateTo, false);
-		const compareLabel = formatPeriod(state.compareFrom, false) + ' – ' + formatPeriod(state.compareTo, false);
-
-		// Views cards
-		$wrap.append(makeCompareCard(
-			false, 'Total Views', primaryLabel, p.total_views,
-			'rgba(91,79,207,1)', 'rgba(91,79,207,0.1)', viewsIcon()
-		));
-		$wrap.append(makeCompareCard(
-			true, 'Total Views', compareLabel, c.total_views,
-			'rgba(232,71,76,1)', 'rgba(232,71,76,0.08)', viewsIcon()
-		));
-
-		// Entries cards (only when entries overlay is on)
-		if (state.includeEntries) {
-			$wrap.append(makeCompareCard(
-				false, 'Total Entries', primaryLabel, p.total_entries,
-				'rgba(47,184,160,1)', 'rgba(47,184,160,0.08)', entriesIcon()
-			));
-			$wrap.append(makeCompareCard(
-				true, 'Total Entries', compareLabel, c.total_entries,
-				'rgba(245,166,35,1)', 'rgba(245,166,35,0.08)', entriesIcon()
-			));
-		}
-
-		$wrap.show();
-	}
-
-	function makeCompareCard(isCompare, metric, rangeLabel, value, accentColor, bgColor, iconSvg) {
-		const $card = $('<div class="gfva-compare-stat-card' + (isCompare ? ' gfva-compare-stat-card--compare' : '') + '">');
-
-		$card.append(
-			$('<div class="gfva-compare-stat-card__accent">').css('background', accentColor)
-		);
-
-		const $icon = $('<div class="gfva-compare-stat-card__icon">').css({ background: bgColor, color: accentColor });
-		$icon.html(iconSvg);
-		$card.append($icon);
-
-		const $body = $('<div class="gfva-compare-stat-card__body">');
-		$body.append( $('<div class="gfva-compare-stat-card__value">').text(formatNumber(value)) );
-		$body.append( $('<div class="gfva-compare-stat-card__metric">').text(metric) );
-		$body.append( $('<div class="gfva-compare-stat-card__range">').css('color', accentColor).text(rangeLabel) );
-		$card.append($body);
-
-		return $card;
-	}
-
-	function viewsIcon() {
-		return '<svg viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
-	}
-
-	function entriesIcon() {
-		return '<svg viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 	}
 
 	function renderDelta(selector, current, previous, isPct) {
@@ -713,8 +644,9 @@
 	}
 
 	function renderBreakdownChart(data) {
-		const byForm  = data.primary.by_form || {};
-		const formIds = Object.keys(byForm).map(Number);
+		const byForm    = data.primary.by_form || {};
+		const formIds   = Object.keys(byForm).map(Number);
+		const hasCompare = !!(data.compare && data.compare.by_form);
 
 		if (formIds.length <= 1) {
 			$('#gfva-breakdown-card').hide();
@@ -728,26 +660,35 @@
 			'rgba(237,137,54,0.8)', 'rgba(72,187,120,0.8)',
 		];
 
-		const barOpts = {
-			indexAxis:           'y',
-			responsive:          true,
-			maintainAspectRatio: false,
-			plugins: {
-				legend: { display: false },
-				tooltip: {
-					backgroundColor: '#fff',
-					borderColor:     '#e2e6ea',
-					borderWidth:     1,
-					titleColor:      '#1a202c',
-					bodyColor:       '#718096',
-					padding:         10,
+		const primaryLabel = formatPeriod(state.dateFrom, false) + ' – ' + formatPeriod(state.dateTo, false);
+		const compareLabel = formatPeriod(state.compareFrom, false) + ' – ' + formatPeriod(state.compareTo, false);
+
+		function makeBarOpts(showLegend) {
+			return {
+				indexAxis:           'y',
+				responsive:          true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						display:  showLegend,
+						position: 'top',
+						labels:   { color: '#718096', font: { size: 12 }, boxWidth: 12, padding: 16 },
+					},
+					tooltip: {
+						backgroundColor: '#fff',
+						borderColor:     '#e2e6ea',
+						borderWidth:     1,
+						titleColor:      '#1a202c',
+						bodyColor:       '#718096',
+						padding:         10,
+					},
 				},
-			},
-			scales: {
-				x: { grid: { color: '#f0f2f5' }, ticks: { color: '#718096', font: { size: 11 } }, beginAtZero: true },
-				y: { grid: { display: false },   ticks: { color: '#718096', font: { size: 12 } } },
-			},
-		};
+				scales: {
+					x: { grid: { color: '#f0f2f5' }, ticks: { color: '#718096', font: { size: 11 } }, beginAtZero: true },
+					y: { grid: { display: false },   ticks: { color: '#718096', font: { size: 12 } } },
+				},
+			};
+		}
 
 		// ---- Views by form ----
 		$('#gfva-breakdown-card').show();
@@ -764,20 +705,39 @@
 			return form ? form.title : `Form #${fid}`;
 		});
 
-		breakdownChart = new Chart(document.getElementById('gfva-breakdown-chart'), {
-			type: 'bar',
-			data: {
-				labels,
-				datasets: [{
-					label:           'Total Views',
-					data:            sorted.map(fid => formTotals[fid]),
-					backgroundColor: sorted.map((_, i) => palette[i % palette.length]),
-					borderRadius:    5,
-					borderSkipped:   false,
-				}],
+		const viewsDatasets = [
+			{
+				label:           primaryLabel,
+				data:            sorted.map(fid => formTotals[fid]),
+				backgroundColor: 'rgba(91,79,207,0.8)',
+				borderRadius:    5,
+				borderSkipped:   false,
 			},
+		];
+
+		if (hasCompare) {
+			const compareByForm = data.compare.by_form;
+			viewsDatasets.push({
+				label:           compareLabel,
+				data:            sorted.map(fid => {
+					const fd = compareByForm[fid] || {};
+					return Object.values(fd).reduce((a, b) => a + b, 0);
+				}),
+				backgroundColor: 'rgba(232,71,76,0.8)',
+				borderRadius:    5,
+				borderSkipped:   false,
+			});
+		}
+
+		// Expand card height when grouped to avoid cramped bars
+		const cardBodyHeight = hasCompare ? Math.max(260, formIds.length * 52) : 220;
+		$('#gfva-breakdown-card .gfva-chart-card__body').css('height', cardBodyHeight + 'px');
+
+		breakdownChart = new Chart(document.getElementById('gfva-breakdown-chart'), {
+			type:    'bar',
+			data:    { labels, datasets: viewsDatasets },
 			plugins: [gfvaDataLabels],
-			options: barOpts,
+			options: makeBarOpts(hasCompare),
 		});
 
 		// ---- Entries by form ----
@@ -800,20 +760,38 @@
 					return form ? form.title : `Form #${fid}`;
 				});
 
-				entriesBreakdownChart = new Chart(document.getElementById('gfva-entries-breakdown-chart'), {
-					type: 'bar',
-					data: {
-						labels: entryLabels,
-						datasets: [{
-							label:           'Total Entries',
-							data:            entrySorted.map(fid => entryTotals[fid]),
-							backgroundColor: entrySorted.map((_, i) => palette[i % palette.length]),
-							borderRadius:    5,
-							borderSkipped:   false,
-						}],
+				const entriesDatasets = [
+					{
+						label:           primaryLabel,
+						data:            entrySorted.map(fid => entryTotals[fid]),
+						backgroundColor: 'rgba(47,184,160,0.8)',
+						borderRadius:    5,
+						borderSkipped:   false,
 					},
+				];
+
+				if (hasCompare && data.compare.by_form_entries) {
+					const compareByFormEntries = data.compare.by_form_entries;
+					entriesDatasets.push({
+						label:           compareLabel,
+						data:            entrySorted.map(fid => {
+							const fd = compareByFormEntries[fid] || {};
+							return Object.values(fd).reduce((a, b) => a + b, 0);
+						}),
+						backgroundColor: 'rgba(245,166,35,0.8)',
+						borderRadius:    5,
+						borderSkipped:   false,
+					});
+				}
+
+				const entryCardBodyHeight = hasCompare ? Math.max(260, entryFormIds.length * 52) : 220;
+				$('#gfva-entries-breakdown-card .gfva-chart-card__body').css('height', entryCardBodyHeight + 'px');
+
+				entriesBreakdownChart = new Chart(document.getElementById('gfva-entries-breakdown-chart'), {
+					type:    'bar',
+					data:    { labels: entryLabels, datasets: entriesDatasets },
 					plugins: [gfvaDataLabels],
-					options: barOpts,
+					options: makeBarOpts(hasCompare),
 				});
 			} else {
 				$('#gfva-entries-breakdown-card').hide();
