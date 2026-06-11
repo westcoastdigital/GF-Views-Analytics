@@ -83,6 +83,9 @@ White label settings are saved per user and take effect immediately when running
 
 ## Changelog
 
+### 1.1.3
+- Fix **Merge conflict** There were merge conflicts in the JS file causing it to break
+
 ### 1.1.2
 - Added **Chart view** toggle (All / Combined / Views / Entries) — switch between chart layouts instantly without re-running the report; selection is persisted to the URL
 - **All** mode stacks three charts: Views only, Entries only, and Combined
