@@ -83,15 +83,19 @@ White label settings are saved per user and take effect immediately when running
 
 ## Changelog
 
-### 1.1.1
+### 1.1.2
 - Added **Chart view** toggle (All / Combined / Views / Entries) — switch between chart layouts instantly without re-running the report; selection is persisted to the URL
 - **All** mode stacks three charts: Views only, Entries only, and Combined
 - Updated **Views by form** and **Entries by form** bar charts to show grouped comparison bars when a compare range is active — primary and compare periods appear side by side per form, colour-coded to match the chart series (purple/red for views, teal/amber for entries); chart height scales automatically with the number of forms
 - Added form selection to URL state so selected forms are preserved on page load and when switching chart view
 - Fixed comparison breakdown cards being cut off in PDF/print — switched to a 2-column print grid with full date wrapping
 - Fixed stat cards not filling page width in PDF/print — corrected print grid to 3 columns
-- Fixed GitHub updater ignoring release tags with an uppercase `V` prefix
 
+### 1.1.1
+- Updated **Views by form** and **Entries by form** bar charts to show grouped comparison bars when a compare range is active — primary and compare periods appear side by side per form, colour-coded to match the main chart series (purple/red for views, teal/amber for entries); chart height scales automatically with the number of forms to prevent cramped bars
+
+- Fixed GitHub updater ignoring release tags with an uppercase `V` prefix
+- 
 ### 1.1.0
 - Added comparison breakdown cards — when a compare range is active, a row of stat cards appears above the main chart showing Total Views and Total Entries for each date range individually, with the date range displayed on each card and colours matching the corresponding chart series
 
