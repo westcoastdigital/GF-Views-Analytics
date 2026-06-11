@@ -3,7 +3,7 @@
  * Plugin Name: GF Views Analytics
  * Plugin URI:  https://simpliweb.com.au
  * Description: Analytics dashboard for Gravity Forms views and entries with charts, filtering, comparison, and PDF export.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      SimpliWeb
  * Author URI:  https://simpliweb.com.au
  * License:     GPL-2.0+
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GFVA_VERSION', '1.1.1' );
+define( 'GFVA_VERSION', '1.1.2' );
 define( 'GFVA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GFVA_URL', plugin_dir_url( __FILE__ ) );
 
