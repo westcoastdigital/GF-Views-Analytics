@@ -82,6 +82,16 @@
 				</label>
 			</div>
 
+			<div class="gfva-filter-group gfva-filter-group--sm">
+				<label class="gfva-label">Chart view</label>
+				<div class="gfva-segmented" id="gfva-chart-view">
+					<button class="gfva-seg-btn active" data-value="all">All</button>
+					<button class="gfva-seg-btn" data-value="combined">Combined</button>
+					<button class="gfva-seg-btn" data-value="views">Views</button>
+					<button class="gfva-seg-btn" data-value="entries">Entries</button>
+				</div>
+			</div>
+
 			<div class="gfva-filter-group gfva-filter-group--action">
 				<button id="gfva-run" class="gfva-btn gfva-btn--primary">
 					<svg viewBox="0 0 24 24" fill="none"><path d="M4 4l16 8-16 8V4z" fill="currentColor"/></svg>
@@ -166,6 +176,28 @@
 			</div>
 			<div class="gfva-chart-card__body">
 				<canvas id="gfva-main-chart"></canvas>
+			</div>
+		</div>
+
+		<!-- VIEWS-ONLY CHART (All mode) -->
+		<div class="gfva-chart-card" id="gfva-views-card" style="display:none;">
+			<div class="gfva-chart-card__header">
+				<h2 class="gfva-chart-card__title">Views over time</h2>
+				<div class="gfva-chart-legend" id="gfva-views-legend"></div>
+			</div>
+			<div class="gfva-chart-card__body">
+				<canvas id="gfva-views-chart"></canvas>
+			</div>
+		</div>
+
+		<!-- ENTRIES-ONLY CHART (All mode) -->
+		<div class="gfva-chart-card" id="gfva-entries-card" style="display:none;">
+			<div class="gfva-chart-card__header">
+				<h2 class="gfva-chart-card__title">Entries over time</h2>
+				<div class="gfva-chart-legend" id="gfva-entries-legend"></div>
+			</div>
+			<div class="gfva-chart-card__body">
+				<canvas id="gfva-entries-chart"></canvas>
 			</div>
 		</div>
 

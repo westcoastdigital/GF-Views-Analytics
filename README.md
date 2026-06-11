@@ -26,17 +26,29 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 - **Granularity** — group data by Day, Week, or Month; automatically switches to hourly when a single day is selected
 - **Entries overlay** — toggle entries data on or off
 - **Compare range** — enable a second date range to compare periods side by side
+- **Chart view** — control how the main chart area is displayed (see below)
 
 ### Dashboard
 
 - **Stat cards** — Total Views, Total Entries, Conversion Rate; each card shows a delta badge when a comparison period is active
 - **Comparison breakdown cards** — when a compare range is active, a row of cards appears above the main chart showing Total Views and Total Entries for each date range individually, colour-coded to match the chart series (purple/red for views, teal/amber for entries)
-- **Line chart** — views over time with optional entries overlay and dashed comparison lines; switches to hourly breakdown for single-day reports
-- **Views by form bar chart** — total views broken down per form (shown when multiple forms are in the result set); switches to a grouped bar chart when a compare range is active, with primary and compare bars side by side coloured to match the chart series
+- **Line charts** — views and entries over time; display is controlled by the Chart view toggle
+- **Views by form bar chart** — total views broken down per form (shown when multiple forms are in the result set); switches to a grouped bar chart when a compare range is active, with primary and compare bars side by side
 - **Entries by form bar chart** — total entries broken down per form (shown when multiple forms are in the result set and entries overlay is on); also grouped when a compare range is active
 - **Data table** — full period-by-period breakdown including deltas and conversion rate
 
 ![Dashboard](assets/screenshot.png)
+
+### Chart View
+
+The **Chart view** segmented control in the filters row changes how the line chart area is rendered without re-running the report:
+
+- **All** — three charts stacked: Views only, Entries only, and Combined (views and entries together)
+- **Combined** — views and entries on a single chart (the classic default)
+- **Views** — views line only; useful when entry counts are so much smaller they become unreadable alongside views
+- **Entries** — entries line only
+
+The selected chart view is saved to the URL so bookmarked or shared reports restore the same layout.
 
 ### Exports
 
@@ -45,7 +57,7 @@ GF Views Analytics adds a reporting page under **Tools > Views Analytics** that 
 
 ### URL State
 
-Filters are written to the URL when you run a report, so you can bookmark, share, or refresh a specific report view and it will restore automatically.
+All filters — including form selection, date ranges, granularity, compare range, entries overlay, and chart view — are written to the URL when you run a report. Switching the chart view also updates the URL immediately without re-running. Reports can be bookmarked, shared, or refreshed and will restore exactly.
 
 ### Date Format
 
@@ -72,7 +84,12 @@ White label settings are saved per user and take effect immediately when running
 ## Changelog
 
 ### 1.1.1
-- Updated **Views by form** and **Entries by form** bar charts to show grouped comparison bars when a compare range is active — primary and compare periods appear side by side per form, colour-coded to match the main chart series (purple/red for views, teal/amber for entries); chart height scales automatically with the number of forms to prevent cramped bars
+- Added **Chart view** toggle (All / Combined / Views / Entries) — switch between chart layouts instantly without re-running the report; selection is persisted to the URL
+- **All** mode stacks three charts: Views only, Entries only, and Combined
+- Updated **Views by form** and **Entries by form** bar charts to show grouped comparison bars when a compare range is active — primary and compare periods appear side by side per form, colour-coded to match the chart series (purple/red for views, teal/amber for entries); chart height scales automatically with the number of forms
+- Added form selection to URL state so selected forms are preserved on page load and when switching chart view
+- Fixed comparison breakdown cards being cut off in PDF/print — switched to a 2-column print grid with full date wrapping
+- Fixed stat cards not filling page width in PDF/print — corrected print grid to 3 columns
 - Fixed GitHub updater ignoring release tags with an uppercase `V` prefix
 
 ### 1.1.0

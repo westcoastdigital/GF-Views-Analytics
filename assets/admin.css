@@ -686,9 +686,7 @@
   font-size: 12px;
   font-weight: 600;
   margin-top: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 /* Section label above the compare cards */
@@ -739,9 +737,9 @@
     display: none !important;
   }
 
-  /* Compare stat cards — keep but compact */
+  /* Compare stat cards — 2 per row so dates have room */
   .gfva-compare-stats {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -754,6 +752,11 @@
   }
   .gfva-compare-stat-card__value {
     font-size: 18px;
+  }
+  .gfva-compare-stat-card__range {
+    font-size: 11px;
+    white-space: normal;
+    word-break: break-word;
   }
 
   /* Remove WP admin body padding */
@@ -771,7 +774,7 @@
   }
 
   .gfva-stats {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -899,7 +902,7 @@
   }
 
   .gfva-stats {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 12px;
   }
